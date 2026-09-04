@@ -27,8 +27,13 @@ export interface CreateQuotationInput {
   puestos: PuestoCotizado[];
   parametrosComerciales: ParametrosComerciales;
   createdBy: string;
-  /** When true, saves as BORRADOR without calculating (sales can finish later). */
   asDraft?: boolean;
+}
+
+function takeParametersSnapshot() {
+  return catalogItemsRepo
+    .getAll()
+    .filter((c) => ["SALARIOS", "IMPUESTOS", "UNIFORMES", "VEHICULOS", "EQUIPAMIENTO"].includes(c.catalogType));
 }
 
 export function createQuotation(input: CreateQuotationInput): Quotation {
@@ -53,13 +58,8 @@ export function createQuotation(input: CreateQuotationInput): Quotation {
   }
 
   const resultado = calcularCotizacion(input.puestos, input.parametrosComerciales);
-
   const hallazgos = validarPuestos(input.puestos, input.datosGenerales);
   const status: QuotationStatus = hallazgos.length > 0 ? "PENDIENTE_VALIDACION" : "CALCULADA";
-
-  const snapshotItems = catalogItemsRepo
-    .getAll()
-    .filter((c) => c.catalogType === "SALARIOS" || c.catalogType === "IMPUESTOS" || c.catalogType === "UNIFORMES");
 
   const quotation: Quotation = {
     id,
@@ -68,7 +68,7 @@ export function createQuotation(input: CreateQuotationInput): Quotation {
     puestos: input.puestos,
     parametrosComerciales: input.parametrosComerciales,
     resultado,
-    parametrosSnapshot: { tomadoEl: nowIso(), items: snapshotItems },
+    parametrosSnapshot: { tomadoEl: nowIso(), items: takeParametersSnapshot() },
     status,
     createdAt: nowIso(),
     updatedAt: nowIso(),
@@ -81,7 +81,6 @@ export function createQuotation(input: CreateQuotationInput): Quotation {
     const exceptions = crearExcepciones(hallazgos, quotation.id, quotation.folio, input.datosGenerales.cliente, input.datosGenerales.vendedorNombre);
     quotation.exceptionIds = exceptions.map((e) => e.id);
     quotationsRepo.replace(quotation.id, quotation);
-
     recordAuditEntry({
       entidad: "COTIZACION",
       entidadId: quotation.id,
@@ -100,7 +99,6 @@ export function createQuotation(input: CreateQuotationInput): Quotation {
   return quotation;
 }
 
-/** Calculates a BORRADOR quotation in place (same id/folio) instead of creating a new record. */
 export function finalizeDraft(quotationId: string): Quotation | undefined {
   const draft = quotationsRepo.getById(quotationId);
   if (!draft) return undefined;
@@ -108,10 +106,6 @@ export function finalizeDraft(quotationId: string): Quotation | undefined {
   const resultado = calcularCotizacion(draft.puestos, draft.parametrosComerciales);
   const hallazgos = validarPuestos(draft.puestos, draft.datosGenerales);
   const status: QuotationStatus = hallazgos.length > 0 ? "PENDIENTE_VALIDACION" : "CALCULADA";
-
-  const snapshotItems = catalogItemsRepo
-    .getAll()
-    .filter((c) => c.catalogType === "SALARIOS" || c.catalogType === "IMPUESTOS" || c.catalogType === "UNIFORMES");
 
   let exceptionIds: string[] = [];
   if (hallazgos.length > 0) {
@@ -122,7 +116,7 @@ export function finalizeDraft(quotationId: string): Quotation | undefined {
   const updated: Quotation = {
     ...draft,
     resultado,
-    parametrosSnapshot: { tomadoEl: nowIso(), items: snapshotItems },
+    parametrosSnapshot: { tomadoEl: nowIso(), items: takeParametersSnapshot() },
     status,
     updatedAt: nowIso(),
     exceptionIds,
