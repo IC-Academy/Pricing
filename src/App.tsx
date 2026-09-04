@@ -40,8 +40,8 @@ function AppRoutes() {
         <Route path="/catalogos" element={<RequireSection section="catalogos"><CatalogosPage /></RequireSection>} />
         <Route path="/benchmark" element={<RequireSection section="benchmark"><BenchmarkPage /></RequireSection>} />
         <Route path="/cotizaciones" element={<RequireSection section="cotizaciones"><CotizacionesPage /></RequireSection>} />
-        <Route path="/cotizaciones/:id" element={<CotizacionDetailPage />} />
-        <Route path="/propuesta/:id" element={<PropuestaPage />} />
+        <Route path="/cotizaciones/:id" element={<RequireSection section="cotizaciones"><CotizacionDetailPage /></RequireSection>} />
+        <Route path="/propuesta/:id" element={<RequireSection section="cotizaciones"><PropuestaPage /></RequireSection>} />
         <Route path="/nueva-cotizacion" element={<RequireSection section="nuevaCotizacion"><CalculadoraWizard /></RequireSection>} />
         <Route path="/mis-cotizaciones" element={<RequireSection section="misCotizaciones"><MisCotizacionesPage /></RequireSection>} />
         <Route path="/validaciones" element={<RequireSection section="validaciones"><ValidacionesPage /></RequireSection>} />
@@ -62,7 +62,7 @@ function NotFound() {
       <p className="text-4xl">🧭</p>
       <h1 className="text-lg font-semibold text-ink-900">Página no encontrada</h1>
       <p className="text-sm text-ink-500">La ruta que buscas no existe en Price Model 365.</p>
-      <a href="/" className="mt-2 text-sm font-medium text-brand-600 hover:underline">
+      <a href="/Pricing/" className="mt-2 text-sm font-medium text-brand-600 hover:underline">
         Volver al inicio
       </a>
     </div>
@@ -80,7 +80,7 @@ function App() {
   if (!ready) return null;
 
   return (
-    <BrowserRouter>
+    <BrowserRouter basename="/Pricing">
       <ToastProvider>
         <AuthProvider>
           <AppRoutes />
