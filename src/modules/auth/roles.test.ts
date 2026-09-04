@@ -54,12 +54,18 @@ describe("auth/roles — navigation & section access", () => {
     expect(canAccessSection("VENTAS", "auditoria")).toBe(false);
   });
 
-  it("gives Admin and Pricing access to Configuración/Catálogos/Auditoría sections", () => {
-    for (const role of ["SUPERADMIN", "ADMIN_FUNCIONAL", "PRICING"] as const) {
+  it("keeps Admin access broad while Pricing is restricted from Usuarios and Configuración", () => {
+    for (const role of ["SUPERADMIN", "ADMIN_FUNCIONAL"] as const) {
       expect(canAccessSection(role, "configuracion")).toBe(true);
       expect(canAccessSection(role, "catalogos")).toBe(true);
       expect(canAccessSection(role, "auditoria")).toBe(true);
+      expect(canAccessSection(role, "usuarios")).toBe(true);
     }
+
+    expect(canAccessSection("PRICING", "catalogos")).toBe(true);
+    expect(canAccessSection("PRICING", "auditoria")).toBe(true);
+    expect(canAccessSection("PRICING", "configuracion")).toBe(false);
+    expect(canAccessSection("PRICING", "usuarios")).toBe(false);
   });
 });
 
