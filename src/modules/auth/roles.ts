@@ -44,7 +44,7 @@ export type AppSection =
   | "auditoria"
   | "configuracion";
 
-const NAV_ADMIN_PRICING: AppSection[] = [
+const NAV_ADMIN: AppSection[] = [
   "dashboard",
   "cotizaciones",
   "validaciones",
@@ -55,11 +55,21 @@ const NAV_ADMIN_PRICING: AppSection[] = [
   "configuracion",
 ];
 
+const NAV_PRICING: AppSection[] = [
+  "dashboard",
+  "cotizaciones",
+  "validaciones",
+  "catalogos",
+  "benchmark",
+  "auditoria",
+];
+
 const NAV_VENTAS: AppSection[] = ["dashboard", "nuevaCotizacion", "misCotizaciones"];
 
 export function navSectionsForRole(role: RoleId): AppSection[] {
   if (role === "VENTAS") return NAV_VENTAS;
-  return NAV_ADMIN_PRICING;
+  if (role === "PRICING") return NAV_PRICING;
+  return NAV_ADMIN;
 }
 
 /** Central access matrix: which roles may view a given section at all. */
