@@ -1,11 +1,5 @@
 // ============================================================================
 // Storage abstraction
-// ----------------------------------------------------------------------------
-// Every module talks to data through the Repository<T> interface below, never
-// directly through window.localStorage. Today LocalStorageRepository is the
-// only implementation; swapping local storage for a real API/SQL backend (or
-// Microsoft 365 / Dataverse) later means writing one new class that satisfies
-// this same interface — nothing in the UI or the engines needs to change.
 // ============================================================================
 
 export interface Repository<T extends { id: string }> {
@@ -34,7 +28,6 @@ function writeRaw<T>(key: string, value: T): void {
   try {
     window.localStorage.setItem(key, JSON.stringify(value));
   } catch (err) {
-    // eslint-disable-next-line no-console
     console.error(`[storage] failed to persist ${key}`, err);
   }
 }
@@ -89,7 +82,6 @@ export class LocalStorageRepository<T extends { id: string }> implements Reposit
   }
 }
 
-/** A single JSON-serializable value keyed in localStorage (for config, session, etc). */
 export class LocalStorageValue<T> {
   private key: string;
   private fallback: T;
@@ -108,15 +100,23 @@ export class LocalStorageValue<T> {
   }
 
   clear(): void {
-    window.localStorage.removeItem(this.key);
+    try {
+      window.localStorage.removeItem(this.key);
+    } catch (err) {
+      console.error(`[storage] failed to clear ${this.key}`, err);
+    }
   }
 }
 
 export function clearAllPm365Storage(): void {
-  const toRemove: string[] = [];
-  for (let i = 0; i < window.localStorage.length; i++) {
-    const key = window.localStorage.key(i);
-    if (key && key.startsWith(`${NAMESPACE}:`)) toRemove.push(key);
+  try {
+    const toRemove: string[] = [];
+    for (let i = 0; i < window.localStorage.length; i++) {
+      const key = window.localStorage.key(i);
+      if (key && key.startsWith(`${NAMESPACE}:`)) toRemove.push(key);
+    }
+    toRemove.forEach((k) => window.localStorage.removeItem(k));
+  } catch (err) {
+    console.error("[storage] localStorage unavailable; continuing without cleanup", err);
   }
-  toRemove.forEach((k) => window.localStorage.removeItem(k));
 }
