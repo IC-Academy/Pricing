@@ -8,12 +8,12 @@
 // validation-engine directly, keeping business rules out of components.
 // ============================================================================
 
-import { quotationsRepo, catalogItemsRepo } from "../../data/db";
+import { quotationsRepo, catalogItemsRepo, exceptionsRepo } from "../../data/db";
 import { calcularCotizacion } from "../pricing-engine";
 import { validarPuestos, crearExcepciones } from "../validation-engine";
 import { recordAuditEntry } from "../audit-service";
 import { newId, nowIso } from "../../lib/ids";
-import type { DatosGenerales, ParametrosComerciales, PuestoCotizado, Quotation, QuotationStatus } from "../../types";
+import type { DatosGenerales, ParametrosComerciales, PuestoCotizado, Quotation, QuotationStatus, ValidationException } from "../../types";
 
 export function generateFolio(): string {
   const year = new Date().getFullYear();
@@ -22,18 +22,54 @@ export function generateFolio(): string {
   return `PM-${year}-${String(next).padStart(5, "0")}`;
 }
 
+export interface ManualValidationInput {
+  campo: string;
+  valorCapturado: number;
+  comentario?: string;
+}
+
 export interface CreateQuotationInput {
   datosGenerales: DatosGenerales;
   puestos: PuestoCotizado[];
   parametrosComerciales: ParametrosComerciales;
   createdBy: string;
   asDraft?: boolean;
+  manualValidations?: ManualValidationInput[];
 }
 
 function takeParametersSnapshot() {
   return catalogItemsRepo
     .getAll()
     .filter((c) => ["SALARIOS", "IMPUESTOS", "UNIFORMES", "VEHICULOS", "EQUIPAMIENTO"].includes(c.catalogType));
+}
+
+function crearExcepcionesManuales(
+  hallazgos: ManualValidationInput[],
+  quotationId: string,
+  quotationFolio: string,
+  clienteNombre: string,
+  vendedorNombre: string
+): ValidationException[] {
+  return hallazgos.map((h) => {
+    const exception: ValidationException = {
+      id: newId(),
+      quotationId,
+      quotationFolio,
+      clienteNombre,
+      vendedorNombre,
+      campo: h.campo,
+      valorCapturado: h.valorCapturado,
+      valorEsperadoMin: 0,
+      valorEsperadoMax: 0,
+      diferenciaAbsoluta: h.valorCapturado,
+      diferenciaPorcentual: 0,
+      fecha: nowIso(),
+      status: "PENDIENTE",
+      comentarioResolucion: h.comentario,
+    };
+    exceptionsRepo.create(exception);
+    return exception;
+  });
 }
 
 export function createQuotation(input: CreateQuotationInput): Quotation {
@@ -59,7 +95,8 @@ export function createQuotation(input: CreateQuotationInput): Quotation {
 
   const resultado = calcularCotizacion(input.puestos, input.parametrosComerciales);
   const hallazgos = validarPuestos(input.puestos, input.datosGenerales);
-  const status: QuotationStatus = hallazgos.length > 0 ? "PENDIENTE_VALIDACION" : "CALCULADA";
+  const manuales = input.manualValidations ?? [];
+  const status: QuotationStatus = hallazgos.length > 0 || manuales.length > 0 ? "PENDIENTE_VALIDACION" : "CALCULADA";
 
   const quotation: Quotation = {
     id,
@@ -77,8 +114,12 @@ export function createQuotation(input: CreateQuotationInput): Quotation {
   };
   quotationsRepo.create(quotation);
 
-  if (hallazgos.length > 0) {
-    const exceptions = crearExcepciones(hallazgos, quotation.id, quotation.folio, input.datosGenerales.cliente, input.datosGenerales.vendedorNombre);
+  const exceptions = [
+    ...crearExcepciones(hallazgos, quotation.id, quotation.folio, input.datosGenerales.cliente, input.datosGenerales.vendedorNombre),
+    ...crearExcepcionesManuales(manuales, quotation.id, quotation.folio, input.datosGenerales.cliente, input.datosGenerales.vendedorNombre),
+  ];
+
+  if (exceptions.length > 0) {
     quotation.exceptionIds = exceptions.map((e) => e.id);
     quotationsRepo.replace(quotation.id, quotation);
     recordAuditEntry({
