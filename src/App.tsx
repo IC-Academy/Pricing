@@ -39,8 +39,8 @@ function AppRoutes() {
         <Route path="/catalogos" element={<RequireSection section="catalogos"><CatalogosPage /></RequireSection>} />
         <Route path="/benchmark" element={<RequireSection section="benchmark"><BenchmarkPage /></RequireSection>} />
         <Route path="/cotizaciones" element={<RequireSection section="cotizaciones"><CotizacionesPage /></RequireSection>} />
-        <Route path="/cotizaciones/:id" element={<RequireSection section="cotizaciones"><CotizacionDetailPage /></RequireSection>} />
-        <Route path="/propuesta/:id" element={<RequireSection section="cotizaciones"><PropuestaPage /></RequireSection>} />
+        <Route path="/cotizaciones/:id" element={<CotizacionDetailPage />} />
+        <Route path="/propuesta/:id" element={<PropuestaPage />} />
         <Route path="/nueva-cotizacion" element={<RequireSection section="nuevaCotizacion"><CalculadoraWizard /></RequireSection>} />
         <Route path="/mis-cotizaciones" element={<RequireSection section="misCotizaciones"><MisCotizacionesPage /></RequireSection>} />
         <Route path="/validaciones" element={<RequireSection section="validaciones"><ValidacionesPage /></RequireSection>} />
