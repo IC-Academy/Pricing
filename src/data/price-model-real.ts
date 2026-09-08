@@ -51,17 +51,33 @@ export const ESTRUCTURA_CIUDAD_DEMO: EstructuraCiudadDemo[] = [
 ];
 
 export interface ExamenCatalogoDemo {
-  id:TipoExamen; nombre:string; tipo:"BASICO"|"ESPECIALIZADO"; costoReferencia:number | null; requiereValidacion:boolean;
+  id:TipoExamen;
+  nombre:string;
+  categoria:"EXAMEN"|"CONFIANZA";
+  obligatorioIc:boolean;
+  costoReferencia:number | null;
+  requiereValidacion:boolean;
+  fuente:string;
 }
 
+// Regla funcional acordada: "Aplicado en procesos de reclutamiento IC = Sí"
+// se considera obligatorio/base para el costo de contratación del servicio.
 export const EXAMENES_DEMO: ExamenCatalogoDemo[] = [
-  { id:"MEDICO", nombre:"Examen médico", tipo:"BASICO", costoReferencia:null, requiereValidacion:false },
-  { id:"ANTIDOPING", nombre:"Antidoping", tipo:"ESPECIALIZADO", costoReferencia:null, requiereValidacion:true },
-  { id:"POLIGRAFO", nombre:"Polígrafo", tipo:"ESPECIALIZADO", costoReferencia:null, requiereValidacion:true },
-  { id:"SOCIOECONOMICO", nombre:"Estudio socioeconómico", tipo:"ESPECIALIZADO", costoReferencia:null, requiereValidacion:true },
-  { id:"AUDIOMETRIA_OPTOMETRIA", nombre:"Audiometría / Optometría", tipo:"ESPECIALIZADO", costoReferencia:null, requiereValidacion:true },
-  { id:"PSICOMETRIA", nombre:"Psicometría", tipo:"ESPECIALIZADO", costoReferencia:null, requiereValidacion:true },
+  { id:"MEDICO", nombre:"Examen médico", categoria:"EXAMEN", obligatorioIc:true, costoReferencia:327, requiereValidacion:false, fuente:"EXAMENES, CAPACITACION E INDUCCION / EXAMENES" },
+  { id:"ANTIDOPING", nombre:"Anti-Doping", categoria:"EXAMEN", obligatorioIc:true, costoReferencia:102, requiereValidacion:false, fuente:"EXAMENES, CAPACITACION E INDUCCION / EXAMENES" },
+  { id:"POLIGRAFO", nombre:"Polígrafo", categoria:"CONFIANZA", obligatorioIc:false, costoReferencia:2500, requiereValidacion:false, fuente:"EXAMENES, CAPACITACION E INDUCCION / EXAMENES" },
+  { id:"SOCIOECONOMICO", nombre:"Socioeconómico", categoria:"CONFIANZA", obligatorioIc:false, costoReferencia:900, requiereValidacion:false, fuente:"EXAMENES, CAPACITACION E INDUCCION / EXAMENES" },
+  { id:"AUDIOMETRIA_OPTOMETRIA", nombre:"Audiometría / Optometría", categoria:"EXAMEN", obligatorioIc:false, costoReferencia:null, requiereValidacion:true, fuente:"EXAMENES, CAPACITACION E INDUCCION / EXAMENES" },
+  { id:"PSICOMETRIA", nombre:"Psicometría", categoria:"EXAMEN", obligatorioIc:true, costoReferencia:null, requiereValidacion:true, fuente:"EXAMENES, CAPACITACION E INDUCCION / EXAMENES" },
 ];
+
+export const EXAMENES_OBLIGATORIOS_IC:TipoExamen[] = EXAMENES_DEMO.filter((x)=>x.obligatorioIc).map((x)=>x.id);
+export const COSTO_OBLIGATORIO_CONOCIDO_POR_ALTA = EXAMENES_DEMO.filter((x)=>x.obligatorioIc && x.costoReferencia!==null).reduce((a,x)=>a+(x.costoReferencia ?? 0),0);
+export const EXAMENES_OBLIGATORIOS_SIN_COSTO = EXAMENES_DEMO.filter((x)=>x.obligatorioIc && x.costoReferencia===null).map((x)=>x.id);
+
+export function costoExamenesPorAlta(examenes:TipoExamen[]):number {
+  return examenes.reduce((total,id)=>total+(EXAMENES_DEMO.find((x)=>x.id===id)?.costoReferencia ?? 0),0);
+}
 
 export const PARAMETROS_LABORALES_2026 = {
   umaDiaria:117.31,
