@@ -1,0 +1,29 @@
+import { useMemo, useState } from "react";
+import { Card } from "../../components/Card";
+import { FieldWrap, SelectInput, TextInput } from "../../components/Field";
+import { CIUDADES_DEMO } from "../../../types";
+import type { CiudadDemo } from "../../../types";
+import { ESTRUCTURA_CIUDAD_DEMO, PARAMETROS_LABORALES_2026 } from "../../../data/price-model-real";
+
+function pct(v:number){return `${(v*100).toFixed(2)}%`;}
+
+export function ModeloPricingPage(){
+  const [ciudad,setCiudad]=useState<CiudadDemo>("CDMX");
+  const [fx,setFx]=useState(18);
+  const [profit,setProfit]=useState(PARAMETROS_LABORALES_2026.profitReferenciaPct*100);
+  const [uma,setUma]=useState(PARAMETROS_LABORALES_2026.umaDiaria);
+  const [sm,setSm]=useState(PARAMETROS_LABORALES_2026.salarioMinimoDiario);
+  const estructura=useMemo(()=>ESTRUCTURA_CIUDAD_DEMO.find((x)=>x.ciudad===ciudad),[ciudad]);
+
+  return <div className="space-y-5">
+    <div><h2 className="text-lg font-semibold text-ink-900">Modelo Pricing</h2><p className="text-sm text-ink-500">Vista técnica para Jorge/Pricing. Replica la lógica de trabajo del Excel por bloques, con parámetros editables para simulación demo.</p></div>
+
+    <Card className="p-5"><p className="text-xs font-semibold uppercase tracking-wide text-brand-700">Parámetros generales</p><div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-4"><FieldWrap label="Ciudad operativa"><SelectInput value={ciudad} onChange={(e)=>setCiudad(e.target.value as CiudadDemo)}>{CIUDADES_DEMO.map((c)=><option key={c}>{c}</option>)}</SelectInput></FieldWrap><FieldWrap label="UMA diaria"><TextInput type="number" step="0.01" value={uma} onChange={(e)=>setUma(Number(e.target.value))}/></FieldWrap><FieldWrap label="Salario mínimo diario"><TextInput type="number" step="0.01" value={sm} onChange={(e)=>setSm(Number(e.target.value))}/></FieldWrap><FieldWrap label="Tipo de cambio USD/MXN"><TextInput type="number" step="0.01" value={fx} onChange={(e)=>setFx(Number(e.target.value))}/></FieldWrap><FieldWrap label="Profit / GM referencia"><TextInput type="number" step="0.1" value={profit} onChange={(e)=>setProfit(Number(e.target.value))}/></FieldWrap></div><p className="mt-3 text-[11px] text-warning-700">En la demo estos cambios son de simulación local. En backend se versionarán con vigencia, usuario, fecha y auditoría.</p></Card>
+
+    <div className="grid gap-4 xl:grid-cols-2"><Card className="p-5"><p className="text-xs font-semibold uppercase tracking-wide text-ink-600">Gross Comp 2026</p><div className="mt-4 overflow-x-auto"><table className="w-full text-sm"><tbody className="divide-y divide-ink-100"><tr><td className="py-2">UMA diaria</td><td className="py-2 text-right font-semibold">${uma.toFixed(2)}</td></tr><tr><td className="py-2">Salario mínimo general</td><td className="py-2 text-right font-semibold">${sm.toFixed(2)}</td></tr><tr><td className="py-2">SM ZLFN</td><td className="py-2 text-right font-semibold">${PARAMETROS_LABORALES_2026.salarioMinimoZlfnDiario.toFixed(2)}</td></tr><tr><td className="py-2">Vacaciones</td><td className="py-2 text-right font-semibold">{PARAMETROS_LABORALES_2026.vacacionesDias} días</td></tr><tr><td className="py-2">Prima vacacional</td><td className="py-2 text-right font-semibold">{pct(PARAMETROS_LABORALES_2026.primaVacacionalPct)}</td></tr><tr><td className="py-2">Aguinaldo</td><td className="py-2 text-right font-semibold">{PARAMETROS_LABORALES_2026.aguinaldoDias} días</td></tr><tr><td className="py-2">Prima dominical</td><td className="py-2 text-right font-semibold">{pct(PARAMETROS_LABORALES_2026.primaDominicalPct)}</td></tr><tr><td className="py-2">Riesgo B07</td><td className="py-2 text-right font-semibold">{pct(PARAMETROS_LABORALES_2026.riesgoTrabajoB07Pct)}</td></tr><tr><td className="py-2">Carga social referencia demo</td><td className="py-2 text-right font-semibold">{pct(PARAMETROS_LABORALES_2026.cargaSocialReferenciaPct)}</td></tr></tbody></table></div></Card>
+
+    <Card className="p-5"><p className="text-xs font-semibold uppercase tracking-wide text-ink-600">Estructura operativa · {ciudad}</p>{estructura?<div className="mt-4 grid grid-cols-2 gap-4 sm:grid-cols-3"><div><small>Región</small><p className="font-semibold">{estructura.region}</p></div><div><small>HC</small><p className="font-semibold">{estructura.hc}</p></div><div><small>Bajas</small><p className="font-semibold">{estructura.bajas}</p></div><div><small>Supervisores</small><p className="font-semibold">{estructura.supervisores}</p></div><div><small>Coordinadores RH</small><p className="font-semibold">{estructura.coordinadoresRh}</p></div><div><small>Reclutadores</small><p className="font-semibold">{estructura.reclutadores}</p></div><div><small>HC/Supervisor</small><p className="font-semibold">{estructura.hcPorSupervisor.toFixed(2)}</p></div><div><small>Personas/Reclutador</small><p className="font-semibold">{estructura.personasPorReclutador.toFixed(2)}</p></div><div><small>Rotación operativa</small><p className="font-semibold">{pct(estructura.rotacionPct)}</p></div></div>:<p className="mt-4 text-sm text-ink-500">Sin referencia cargada.</p>}</Card></div>
+
+    <Card className="p-5"><p className="text-xs font-semibold uppercase tracking-wide text-brand-700">Estructura de costos · bloques a sustituir del Excel</p><div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">{["Gross Comp / costo laboral","Uniformes y equipo","Vehículos e infraestructura","Capacitación y exámenes","Permisos y regulación","Estructura operativa","Indirectos / G&A / financiamiento","Profit / precio final"].map((x)=><div key={x} className="rounded-lg border border-ink-200 bg-ink-50 p-3 text-sm font-medium">{x}</div>)}</div><p className="mt-4 text-xs text-ink-500">Objetivo: que Pricing pueda modificar cada parámetro desde esta capa administrada y dejar de depender de fórmulas ocultas dentro de los Excel.</p></Card>
+  </div>;
+}
