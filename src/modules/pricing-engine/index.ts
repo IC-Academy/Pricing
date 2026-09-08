@@ -1,12 +1,10 @@
 // ============================================================================
-// pricing-engine — V0.6 puente hacia el modelo real
-// Los parámetros administrados en Modelo Pricing ya alimentan nuevas cotizaciones.
-// Se conserva compatibilidad con las pruebas y defaults actuales mientras se
-// termina la paridad fina de Gross Comp / Estructura de Costos / Cash Flow.
+// pricing-engine — V0.7
+// Integra catálogos reales de exámenes y parámetros administrados por Pricing.
 // ============================================================================
 
-import type { DatosGenerales, DesgloseCostoLaboral, ParametrosComerciales, PuestoCalculado, PuestoCotizado, ResultadoCalculo } from "../../types";
-import { ISN_2026, PARAMETROS_LABORALES_2026 } from "../../data/price-model-real";
+import type { DatosGenerales, DesgloseCostoLaboral, ParametrosComerciales, PuestoCalculado, PuestoCotizado, ResultadoCalculo, TipoExamen } from "../../types";
+import { EXAMENES_DEMO, EXAMENES_OBLIGATORIOS_IC, ISN_2026, PARAMETROS_LABORALES_2026 } from "../../data/price-model-real";
 import { DEFAULT_FINANCIAL_MODEL_PARAMS, loadFinancialModelParams, type FinancialModelParams } from "../financial-model";
 
 export const CARGA_SOCIAL_PCT = 0.42;
@@ -20,6 +18,24 @@ function clampMargen(margen:number):number {
 
 function modelParams():FinancialModelParams {
   try { return loadFinancialModelParams(); } catch { return { ...DEFAULT_FINANCIAL_MODEL_PARAMS }; }
+}
+
+function examenesEfectivos(puesto:PuestoCotizado):TipoExamen[] {
+  return [...new Set([...(puesto.examenes ?? []), ...EXAMENES_OBLIGATORIOS_IC])];
+}
+
+export function costoConocidoExamenesPorAlta(puesto:PuestoCotizado):number {
+  return round2(examenesEfectivos(puesto).reduce((total,id)=>{
+    const costo=EXAMENES_DEMO.find((x)=>x.id===id)?.costoReferencia;
+    return total + (costo ?? 0);
+  },0));
+}
+
+export function costoMensualExamenes(puesto:PuestoCotizado):number {
+  // Los importes del catálogo son costo por alta. La demo los amortiza 12 meses;
+  // cualquier costo manual adicional sigue en costoExamenesMensualizado.
+  const conocidoMensual=round2(costoConocidoExamenesPorAlta(puesto)/12);
+  return round2(conocidoMensual + Math.max(0,puesto.costoExamenesMensualizado ?? 0));
 }
 
 export function calcularDesgloseLaboral(salarioMensual:number, datosGenerales?:DatosGenerales, params:FinancialModelParams = modelParams()):DesgloseCostoLaboral {
@@ -37,7 +53,6 @@ export function calcularDesgloseLaboral(salarioMensual:number, datosGenerales?:D
   return { sueldoBaseMensual:salarioMensual, aguinaldoMensualizado, vacacionesMensualizadas, primaVacacionalMensualizada, cargaSocialReferencia, isn, riesgoTrabajo, costoLaboralTotal };
 }
 
-// Se conserva como función estable para pruebas y consumidores existentes.
 export function calcularCostoLaboralMensual(salarioMensual:number):number {
   return round2(salarioMensual * (1 + CARGA_SOCIAL_PCT));
 }
@@ -45,7 +60,8 @@ export function calcularCostoLaboralMensual(salarioMensual:number):number {
 export function calcularPuesto(puesto:PuestoCotizado, margenObjetivo:number, datosGenerales?:DatosGenerales, params:FinancialModelParams = modelParams()):PuestoCalculado {
   const desgloseLaboral = calcularDesgloseLaboral(puesto.salarioMensual, datosGenerales, params);
   const costoLaboralMensual = desgloseLaboral.costoLaboralTotal;
-  const bienesMensual = puesto.uniformeCosto + puesto.equipoCosto + (puesto.vehiculoOpcional ? puesto.vehiculoCosto : 0) + (puesto.costoExamenesMensualizado ?? 0);
+  const examenesMensual=costoMensualExamenes(puesto);
+  const bienesMensual = puesto.uniformeCosto + puesto.equipoCosto + (puesto.vehiculoOpcional ? puesto.vehiculoCosto : 0) + examenesMensual;
   const subtotal = costoLaboralMensual + bienesMensual;
   const overhead = round2(subtotal * Math.max(0,params.overheadPct));
   const costoMensualPorPosicion = round2(subtotal + overhead);
@@ -55,16 +71,13 @@ export function calcularPuesto(puesto:PuestoCotizado, margenObjetivo:number, dat
   const precioRecomendadoUnitario = round2(costoMensualPorPosicion / (1 - margenSeguro));
   const precioTotalPuesto = round2(precioRecomendadoUnitario * puesto.cantidadPosiciones);
   const precioAnualPuesto = round2(precioTotalPuesto * 12);
-  return { ...puesto, costoLaboralMensual, desgloseLaboral, costoMensualTotal, costoAnualTotal, precioRecomendadoUnitario, precioTotalPuesto, precioAnualPuesto };
+  return { ...puesto, examenes:examenesEfectivos(puesto), costoExamenesMensualizado:examenesMensual, costoLaboralMensual, desgloseLaboral, costoMensualTotal, costoAnualTotal, precioRecomendadoUnitario, precioTotalPuesto, precioAnualPuesto };
 }
 
 export function calcularCotizacion(puestos:PuestoCotizado[], parametrosComerciales:ParametrosComerciales, datosGenerales?:DatosGenerales):ResultadoCalculo {
   const params = modelParams();
   const puestosCalculados = puestos.map((p) => calcularPuesto(p, parametrosComerciales.grossMarginObjetivo, datosGenerales, params));
   const baseMensual = round2(puestosCalculados.reduce((acc,p) => acc + p.costoMensualTotal,0));
-
-  // Bloques de Cost Summary ya parametrizados. Con defaults 0 no alteran el
-  // resultado histórico; Jorge/Pricing puede activarlos desde Modelo Pricing.
   const indirectos = round2(baseMensual * Math.max(0,params.indirectPct));
   const ga = round2(baseMensual * Math.max(0,params.gaPct));
   const preFin = baseMensual + indirectos + ga;
