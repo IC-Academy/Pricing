@@ -49,6 +49,7 @@ const STEPS = ["Oportunidad", "Servicio y benchmark", "Parámetros comerciales"]
 
 export function CalculadoraWizard() {
   const { currentUser } = useAuth();
+  const currentUserId = currentUser?.id ?? "";
   const { showToast } = useToast();
   const navigate = useNavigate();
   const [step, setStep] = useState(0);
@@ -62,7 +63,7 @@ export function CalculadoraWizard() {
     ciudad: "CDMX",
     estado: ESTADO_POR_CIUDAD.CDMX,
     fecha: new Date().toISOString().slice(0, 10),
-    vendedorId: currentUser?.id ?? "",
+    vendedorId: currentUserId,
     vendedorNombre: currentUser?.fullName ?? "",
   });
 
@@ -136,13 +137,13 @@ export function CalculadoraWizard() {
   }
 
   function handleSaveDraft() {
-    createQuotation({ datosGenerales, puestos, parametrosComerciales: parametros, createdBy: currentUser.id, asDraft: true });
+    createQuotation({ datosGenerales, puestos, parametrosComerciales: parametros, createdBy: currentUserId, asDraft: true });
     showToast("Cotización guardada como borrador.", "info");
     navigate("/mis-cotizaciones");
   }
 
   function handleCalcular() {
-    const quotation = createQuotation({ datosGenerales, puestos, parametrosComerciales: parametros, createdBy: currentUser.id });
+    const quotation = createQuotation({ datosGenerales, puestos, parametrosComerciales: parametros, createdBy: currentUserId });
     if (quotation.status === "PENDIENTE_VALIDACION") {
       showToast("Cotización calculada. Se detectaron valores fuera de parámetro y se envió a Validaciones.", "warning");
     } else {
