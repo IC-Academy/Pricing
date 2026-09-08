@@ -21,17 +21,17 @@ export interface ParityResult {
 }
 
 // Caso control ya observado en PM MACHOTE 2026.
-// Los costos auxiliares permanecen explícitos para que Pricing pueda ver qué
-// supuesto provoca cualquier diferencia en lugar de esconderla en una fórmula.
+// El costo laboral usa el requerido total del Excel, no sólo la posición física.
 export const PARITY_CASES: ParityCase[] = [
   {
     id: "machote-cdmx-guardia-12x5",
     nombre: "CDMX · Guardia · 12x5 · 1 posición",
-    fuente: "PM_-_MACHOTE_2026_v1_2.xlsm / Precio Por Puesto",
+    fuente: "PM_-_MACHOTE_2026_v1_2.xlsm / Resumen de Puestos + Precio Por Puesto",
     input: {
       ciudad: CASO_PARIDAD_MACHOTE.ciudad as CiudadDemo,
       salarioMensual: 13613.33,
       posiciones: 1,
+      staffingFactor: CASO_PARIDAD_MACHOTE.requeridoTotal,
       uniformeMensual: 350,
       equipoMensual: 590,
       vehiculoMensual: 0,
@@ -40,7 +40,7 @@ export const PARITY_CASES: ParityCase[] = [
     },
     precioExcelMensual: CASO_PARIDAD_MACHOTE.precioPorPuesto,
     toleranciaAbsoluta: 1,
-    notas: "Control inicial. Debe llegar a ±$1 antes de considerar sustituida la ruta Excel para este escenario.",
+    notas: "Control inicial. Incluye vacaciones + ausentismo del Resumen de Puestos. Debe llegar a ±$1 antes de considerar sustituida esta ruta Excel.",
   },
 ];
 
