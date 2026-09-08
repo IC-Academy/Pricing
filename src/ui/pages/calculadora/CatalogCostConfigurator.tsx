@@ -41,7 +41,8 @@ export function CatalogCostConfigurator({ tipo, titulo, selecciones, onChange }:
   const [precioEstimado, setPrecioEstimado] = useState(0);
 
   const opcion = opcionPorId(opcionId);
-  const manual = !opcion || opcion.requiereValidacion || opcion.precioMensual === null;
+  const requiereCapturaManual = !opcion || opcion.precioMensual === null;
+  const pendientePricing = !!opcion?.requiereValidacion;
 
   function handleConcepto(next: string) {
     setConcepto(next);
@@ -55,7 +56,7 @@ export function CatalogCostConfigurator({ tipo, titulo, selecciones, onChange }:
     const selected = opcionPorId(opcionId);
     if (!selected) return;
     const precio = selected.precioMensual ?? precioEstimado;
-    if (manual && (!especificacion.trim() || precio <= 0)) return;
+    if (requiereCapturaManual && (!especificacion.trim() || precio <= 0)) return;
 
     onChange([
       ...selecciones,
@@ -64,10 +65,10 @@ export function CatalogCostConfigurator({ tipo, titulo, selecciones, onChange }:
         tipo,
         concepto,
         opcionId: selected.id,
-        nombre: manual ? especificacion.trim() : selected.nombre,
+        nombre: requiereCapturaManual ? especificacion.trim() : selected.nombre,
         precioMensual: precio,
-        especificacion: manual ? especificacion.trim() : undefined,
-        requiereValidacion: manual,
+        especificacion: requiereCapturaManual ? especificacion.trim() : undefined,
+        requiereValidacion: pendientePricing || requiereCapturaManual,
       },
     ]);
     setEspecificacion("");
@@ -81,7 +82,7 @@ export function CatalogCostConfigurator({ tipo, titulo, selecciones, onChange }:
       <div className="flex items-center justify-between gap-2">
         <div>
           <p className="text-sm font-semibold text-ink-900">{titulo}</p>
-          <p className="text-xs text-ink-500">Selecciona conceptos del catálogo. Los conceptos especiales pasan a validación de Pricing.</p>
+          <p className="text-xs text-ink-500">Selecciona conceptos del catálogo. Los valores especiales o con periodicidad pendiente pasan a Pricing.</p>
         </div>
         <div className="text-right">
           <p className="text-[11px] uppercase tracking-wide text-ink-400">Total mensual</p>
@@ -99,7 +100,7 @@ export function CatalogCostConfigurator({ tipo, titulo, selecciones, onChange }:
           <SelectInput value={opcionId} onChange={(e) => { setOpcionId(e.target.value); setEspecificacion(""); setPrecioEstimado(0); }}>
             {opcionesPorConcepto(tipo, concepto).map((o) => (
               <option key={o.id} value={o.id}>
-                {o.nombre}{o.precioMensual !== null ? ` · $${o.precioMensual.toLocaleString("es-MX")}/mes` : ""}
+                {o.nombre}{o.costoBase !== undefined ? ` · kit $${o.costoBase.toLocaleString("es-MX",{maximumFractionDigits:2})}` : o.precioMensual !== null ? ` · $${o.precioMensual.toLocaleString("es-MX")}/mes` : ""}
               </option>
             ))}
           </SelectInput>
@@ -107,10 +108,12 @@ export function CatalogCostConfigurator({ tipo, titulo, selecciones, onChange }:
         <div className="flex items-end"><Button className="w-full" variant="secondary" onClick={agregar}>{labelAgregar(tipo)}</Button></div>
       </div>
 
-      {manual && (
+      {opcion?.nota && <div className="mt-3 rounded-lg border border-warning-200 bg-warning-50 p-3 text-xs text-warning-800">{opcion.nota}</div>}
+
+      {requiereCapturaManual && (
         <div className="mt-3 rounded-lg border border-warning-200 bg-warning-50 p-3">
           <p className="text-xs font-semibold text-warning-800">Pendiente de validación por Pricing</p>
-          <p className="mt-1 text-[11px] text-warning-700">Especifica el requerimiento y un precio estimado. La cotización puede continuar, pero Jorge/Pricing deberá aceptar, rechazar o ajustar este concepto.</p>
+          <p className="mt-1 text-[11px] text-warning-700">Especifica el requerimiento y un precio estimado. La cotización puede continuar, pero Pricing deberá aceptar, rechazar o ajustar este concepto.</p>
           <div className="mt-3 grid gap-3 sm:grid-cols-2">
             <FieldWrap label="Especifique">
               <TextInput value={especificacion} onChange={(e) => setEspecificacion(e.target.value)} placeholder="Ej. Lámpara táctica recargable 1200 lúmenes" />
