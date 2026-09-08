@@ -1,7 +1,18 @@
+import { UNIFORMES_KITS_REAL } from "./uniformes-real";
+
 export type CatalogoCotizacionTipo = "EQUIPO" | "UNIFORME" | "VEHICULO";
 
 export interface OpcionCatalogoCotizacion {
-  id:string; tipo:CatalogoCotizacionTipo; concepto:string; nombre:string; precioMensual:number|null; unidad:string; fuente:string; requiereValidacion?:boolean;
+  id:string;
+  tipo:CatalogoCotizacionTipo;
+  concepto:string;
+  nombre:string;
+  precioMensual:number|null;
+  unidad:string;
+  fuente:string;
+  requiereValidacion?:boolean;
+  costoBase?:number;
+  nota?:string;
 }
 
 export const TIPOS_GUARDIA_DEMO = [
@@ -21,6 +32,21 @@ export const TURNOS_DEMO = [
   { id:"Nocturna", nombre:"Nocturna", label:"Nocturna", horas:12, diasSemana:7 },
 ] as const;
 
+const UNIFORMES_REALES:OpcionCatalogoCotizacion[] = UNIFORMES_KITS_REAL.map((kit)=>({
+  id:kit.id,
+  tipo:"UNIFORME",
+  concepto:`Kit ${kit.grupo}`,
+  nombre:kit.nombre,
+  costoBase:kit.costoKit,
+  // El Excel entrega costo por kit. Para poder simular la cotización en esta fase
+  // se muestra una amortización de 1 entrega/año, siempre pendiente de validación.
+  precioMensual:Math.round((kit.costoKit/12)*100)/100,
+  unidad:"MXN/mes (1 kit/año demo)",
+  fuente:kit.fuente,
+  requiereValidacion:true,
+  nota:`Costo real por kit: $${kit.costoKit.toFixed(2)}. Periodicidad pendiente de validación Pricing.`,
+}));
+
 export const OPCIONES_CATALOGO_COTIZACION:OpcionCatalogoCotizacion[] = [
   { id:"eq-radio-base", tipo:"EQUIPO", concepto:"Radio", nombre:"Radio de comunicación", precioMensual:180, unidad:"MXN/mes", fuente:"Catálogo demo Pricing 2026" },
   { id:"eq-chaleco-iiia", tipo:"EQUIPO", concepto:"Protección", nombre:"Chaleco antibalas NIJ IIIA", precioMensual:260, unidad:"MXN/mes", fuente:"Catálogo demo Pricing 2026" },
@@ -29,10 +55,8 @@ export const OPCIONES_CATALOGO_COTIZACION:OpcionCatalogoCotizacion[] = [
   { id:"eq-radio-otro", tipo:"EQUIPO", concepto:"Radio", nombre:"Otro / Especifique", precioMensual:null, unidad:"MXN/mes", fuente:"Pendiente de catálogo Pricing", requiereValidacion:true },
   { id:"eq-proteccion-otro", tipo:"EQUIPO", concepto:"Protección", nombre:"Otro / Especifique", precioMensual:null, unidad:"MXN/mes", fuente:"Pendiente de catálogo Pricing", requiereValidacion:true },
   { id:"eq-otro", tipo:"EQUIPO", concepto:"Otro", nombre:"Otro / Especifique", precioMensual:null, unidad:"MXN/mes", fuente:"Pendiente de catálogo Pricing", requiereValidacion:true },
-  { id:"un-intramuros", tipo:"UNIFORME", concepto:"Kit uniforme", nombre:"Uniforme Guardia Intramuros", precioMensual:350, unidad:"MXN/mes", fuente:"Catálogo demo Pricing 2026" },
-  { id:"un-armado", tipo:"UNIFORME", concepto:"Kit uniforme", nombre:"Uniforme Guardia Armado", precioMensual:420, unidad:"MXN/mes", fuente:"Catálogo demo Pricing 2026" },
-  { id:"un-supervisor", tipo:"UNIFORME", concepto:"Kit uniforme", nombre:"Uniforme Supervisor", precioMensual:480, unidad:"MXN/mes", fuente:"Catálogo demo Pricing 2026" },
-  { id:"un-otro", tipo:"UNIFORME", concepto:"Kit uniforme", nombre:"Otro / Especifique", precioMensual:null, unidad:"MXN/mes", fuente:"Pendiente de catálogo Pricing", requiereValidacion:true },
+  ...UNIFORMES_REALES,
+  { id:"un-otro", tipo:"UNIFORME", concepto:"Otro", nombre:"Otro / Especifique", precioMensual:null, unidad:"MXN/mes", fuente:"Pendiente de catálogo Pricing", requiereValidacion:true },
   { id:"veh-sedan", tipo:"VEHICULO", concepto:"Vehículo", nombre:"Vehículo Sedán de Ronda", precioMensual:9800, unidad:"MXN/mes", fuente:"Catálogo demo Pricing 2026" },
   { id:"veh-camioneta", tipo:"VEHICULO", concepto:"Vehículo", nombre:"Camioneta de Supervisión", precioMensual:14500, unidad:"MXN/mes", fuente:"Catálogo demo Pricing 2026" },
   { id:"veh-otro", tipo:"VEHICULO", concepto:"Vehículo", nombre:"Otro / Especifique", precioMensual:null, unidad:"MXN/mes", fuente:"Pendiente de catálogo Pricing", requiereValidacion:true },
