@@ -3,9 +3,7 @@
 // ----------------------------------------------------------------------------
 // Orchestrates quotation creation: calls pricing-engine to calculate,
 // validation-engine to flag out-of-range fields and raise exceptions, takes
-// the parameters snapshot, assigns the folio, and persists everything. UI
-// wizards call this instead of touching quotationsRepo/pricing-engine/
-// validation-engine directly, keeping business rules out of components.
+// the parameters snapshot, assigns the folio, and persists everything.
 // ============================================================================
 
 import { quotationsRepo, catalogItemsRepo, exceptionsRepo } from "../../data/db";
@@ -22,179 +20,71 @@ export function generateFolio(): string {
   return `PM-${year}-${String(next).padStart(5, "0")}`;
 }
 
-export interface ManualValidationInput {
-  campo: string;
-  valorCapturado: number;
-  comentario?: string;
-}
-
+export interface ManualValidationInput { campo:string; valorCapturado:number; comentario?:string; }
 export interface CreateQuotationInput {
-  datosGenerales: DatosGenerales;
-  puestos: PuestoCotizado[];
-  parametrosComerciales: ParametrosComerciales;
-  createdBy: string;
-  asDraft?: boolean;
-  manualValidations?: ManualValidationInput[];
+  datosGenerales:DatosGenerales; puestos:PuestoCotizado[]; parametrosComerciales:ParametrosComerciales; createdBy:string;
+  asDraft?:boolean; manualValidations?:ManualValidationInput[];
 }
 
 function takeParametersSnapshot() {
-  return catalogItemsRepo
-    .getAll()
-    .filter((c) => ["SALARIOS", "IMPUESTOS", "UNIFORMES", "VEHICULOS", "EQUIPAMIENTO"].includes(c.catalogType));
+  return catalogItemsRepo.getAll().filter((c) => ["SALARIOS", "IMPUESTOS", "UNIFORMES", "VEHICULOS", "EQUIPAMIENTO"].includes(c.catalogType));
 }
 
-function crearExcepcionesManuales(
-  hallazgos: ManualValidationInput[],
-  quotationId: string,
-  quotationFolio: string,
-  clienteNombre: string,
-  vendedorNombre: string
-): ValidationException[] {
+function crearExcepcionesManuales(hallazgos:ManualValidationInput[], quotationId:string, quotationFolio:string, clienteNombre:string, vendedorNombre:string):ValidationException[] {
   return hallazgos.map((h) => {
-    const exception: ValidationException = {
-      id: newId(),
-      quotationId,
-      quotationFolio,
-      clienteNombre,
-      vendedorNombre,
-      campo: h.campo,
-      valorCapturado: h.valorCapturado,
-      valorEsperadoMin: 0,
-      valorEsperadoMax: 0,
-      diferenciaAbsoluta: h.valorCapturado,
-      diferenciaPorcentual: 0,
-      fecha: nowIso(),
-      status: "PENDIENTE",
-      comentarioResolucion: h.comentario,
+    const exception:ValidationException = {
+      id:newId(), quotationId, quotationFolio, clienteNombre, vendedorNombre, campo:h.campo,
+      valorCapturado:h.valorCapturado, valorEsperadoMin:0, valorEsperadoMax:0,
+      diferenciaAbsoluta:h.valorCapturado, diferenciaPorcentual:0, fecha:nowIso(), status:"PENDIENTE", comentarioResolucion:h.comentario,
     };
-    exceptionsRepo.create(exception);
-    return exception;
+    exceptionsRepo.create(exception); return exception;
   });
 }
 
-export function createQuotation(input: CreateQuotationInput): Quotation {
-  const id = newId();
-  const folio = generateFolio();
-
+export function createQuotation(input:CreateQuotationInput):Quotation {
+  const id=newId(); const folio=generateFolio();
   if (input.asDraft) {
-    const draft: Quotation = {
-      id,
-      folio,
-      datosGenerales: input.datosGenerales,
-      puestos: input.puestos,
-      parametrosComerciales: input.parametrosComerciales,
-      status: "BORRADOR",
-      createdAt: nowIso(),
-      updatedAt: nowIso(),
-      createdBy: input.createdBy,
-      exceptionIds: [],
-    };
-    quotationsRepo.create(draft);
-    return draft;
+    const draft:Quotation={id,folio,datosGenerales:input.datosGenerales,puestos:input.puestos,parametrosComerciales:input.parametrosComerciales,status:"BORRADOR",createdAt:nowIso(),updatedAt:nowIso(),createdBy:input.createdBy,exceptionIds:[]};
+    quotationsRepo.create(draft); return draft;
   }
 
-  const resultado = calcularCotizacion(input.puestos, input.parametrosComerciales);
-  const hallazgos = validarPuestos(input.puestos, input.datosGenerales);
-  const manuales = input.manualValidations ?? [];
-  const status: QuotationStatus = hallazgos.length > 0 || manuales.length > 0 ? "PENDIENTE_VALIDACION" : "CALCULADA";
-
-  const quotation: Quotation = {
-    id,
-    folio,
-    datosGenerales: input.datosGenerales,
-    puestos: input.puestos,
-    parametrosComerciales: input.parametrosComerciales,
-    resultado,
-    parametrosSnapshot: { tomadoEl: nowIso(), items: takeParametersSnapshot() },
-    status,
-    createdAt: nowIso(),
-    updatedAt: nowIso(),
-    createdBy: input.createdBy,
-    exceptionIds: [],
-  };
+  const resultado=calcularCotizacion(input.puestos,input.parametrosComerciales,input.datosGenerales);
+  const hallazgos=validarPuestos(input.puestos,input.datosGenerales);
+  const manuales=input.manualValidations ?? [];
+  const status:QuotationStatus=hallazgos.length>0 || manuales.length>0 ? "PENDIENTE_VALIDACION" : "CALCULADA";
+  const quotation:Quotation={id,folio,datosGenerales:input.datosGenerales,puestos:input.puestos,parametrosComerciales:input.parametrosComerciales,resultado,parametrosSnapshot:{tomadoEl:nowIso(),items:takeParametersSnapshot()},status,createdAt:nowIso(),updatedAt:nowIso(),createdBy:input.createdBy,exceptionIds:[]};
   quotationsRepo.create(quotation);
 
-  const exceptions = [
-    ...crearExcepciones(hallazgos, quotation.id, quotation.folio, input.datosGenerales.cliente, input.datosGenerales.vendedorNombre),
-    ...crearExcepcionesManuales(manuales, quotation.id, quotation.folio, input.datosGenerales.cliente, input.datosGenerales.vendedorNombre),
+  const exceptions=[
+    ...crearExcepciones(hallazgos,quotation.id,quotation.folio,input.datosGenerales.cliente,input.datosGenerales.vendedorNombre),
+    ...crearExcepcionesManuales(manuales,quotation.id,quotation.folio,input.datosGenerales.cliente,input.datosGenerales.vendedorNombre),
   ];
-
-  if (exceptions.length > 0) {
-    quotation.exceptionIds = exceptions.map((e) => e.id);
-    quotationsRepo.replace(quotation.id, quotation);
-    recordAuditEntry({
-      entidad: "COTIZACION",
-      entidadId: quotation.id,
-      descripcion: `Se generaron ${exceptions.length} excepción(es) automáticamente al calcular ${quotation.folio}`,
-      usuario: input.datosGenerales.vendedorNombre,
-    });
+  if (exceptions.length>0) {
+    quotation.exceptionIds=exceptions.map((e)=>e.id); quotationsRepo.replace(quotation.id,quotation);
+    recordAuditEntry({entidad:"COTIZACION",entidadId:quotation.id,descripcion:`Se generaron ${exceptions.length} excepción(es) automáticamente al calcular ${quotation.folio}`,usuario:input.datosGenerales.vendedorNombre});
   }
-
-  recordAuditEntry({
-    entidad: "COTIZACION",
-    entidadId: quotation.id,
-    descripcion: `Se calculó la cotización ${quotation.folio} para ${input.datosGenerales.cliente}`,
-    usuario: input.datosGenerales.vendedorNombre,
-  });
-
+  recordAuditEntry({entidad:"COTIZACION",entidadId:quotation.id,descripcion:`Se calculó la cotización ${quotation.folio} para ${input.datosGenerales.cliente}`,usuario:input.datosGenerales.vendedorNombre});
   return quotation;
 }
 
-export function finalizeDraft(quotationId: string): Quotation | undefined {
-  const draft = quotationsRepo.getById(quotationId);
-  if (!draft) return undefined;
-
-  const resultado = calcularCotizacion(draft.puestos, draft.parametrosComerciales);
-  const hallazgos = validarPuestos(draft.puestos, draft.datosGenerales);
-  const status: QuotationStatus = hallazgos.length > 0 ? "PENDIENTE_VALIDACION" : "CALCULADA";
-
-  let exceptionIds: string[] = [];
-  if (hallazgos.length > 0) {
-    const exceptions = crearExcepciones(hallazgos, draft.id, draft.folio, draft.datosGenerales.cliente, draft.datosGenerales.vendedorNombre);
-    exceptionIds = exceptions.map((e) => e.id);
-  }
-
-  const updated: Quotation = {
-    ...draft,
-    resultado,
-    parametrosSnapshot: { tomadoEl: nowIso(), items: takeParametersSnapshot() },
-    status,
-    updatedAt: nowIso(),
-    exceptionIds,
-  };
-  quotationsRepo.replace(quotationId, updated);
-
-  recordAuditEntry({
-    entidad: "COTIZACION",
-    entidadId: updated.id,
-    descripcion: `Se calculó la cotización ${updated.folio} para ${updated.datosGenerales.cliente}`,
-    usuario: updated.datosGenerales.vendedorNombre,
-  });
-
+export function finalizeDraft(quotationId:string):Quotation|undefined {
+  const draft=quotationsRepo.getById(quotationId); if(!draft) return undefined;
+  const resultado=calcularCotizacion(draft.puestos,draft.parametrosComerciales,draft.datosGenerales);
+  const hallazgos=validarPuestos(draft.puestos,draft.datosGenerales);
+  const status:QuotationStatus=hallazgos.length>0?"PENDIENTE_VALIDACION":"CALCULADA";
+  let exceptionIds:string[]=[];
+  if(hallazgos.length>0){const exceptions=crearExcepciones(hallazgos,draft.id,draft.folio,draft.datosGenerales.cliente,draft.datosGenerales.vendedorNombre); exceptionIds=exceptions.map((e)=>e.id);}
+  const updated:Quotation={...draft,resultado,parametrosSnapshot:{tomadoEl:nowIso(),items:takeParametersSnapshot()},status,updatedAt:nowIso(),exceptionIds};
+  quotationsRepo.replace(quotationId,updated);
+  recordAuditEntry({entidad:"COTIZACION",entidadId:updated.id,descripcion:`Se calculó la cotización ${updated.folio} para ${updated.datosGenerales.cliente}`,usuario:updated.datosGenerales.vendedorNombre});
   return updated;
 }
 
-export function setQuotationStatus(id: string, status: QuotationStatus, actorName: string): Quotation | undefined {
-  const updated = quotationsRepo.update(id, { status, updatedAt: nowIso() });
-  if (updated) {
-    recordAuditEntry({
-      entidad: "COTIZACION",
-      entidadId: id,
-      descripcion: `Cotización ${updated.folio} cambió de estado a ${status}`,
-      usuario: actorName,
-    });
-  }
+export function setQuotationStatus(id:string,status:QuotationStatus,actorName:string):Quotation|undefined {
+  const updated=quotationsRepo.update(id,{status,updatedAt:nowIso()});
+  if(updated) recordAuditEntry({entidad:"COTIZACION",entidadId:id,descripcion:`Cotización ${updated.folio} cambió de estado a ${status}`,usuario:actorName});
   return updated;
 }
-
-export function listQuotations(): Quotation[] {
-  return quotationsRepo.getAll().sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1));
-}
-
-export function listQuotationsByVendedor(vendedorId: string): Quotation[] {
-  return listQuotations().filter((q) => q.datosGenerales.vendedorId === vendedorId);
-}
-
-export function getQuotation(id: string): Quotation | undefined {
-  return quotationsRepo.getById(id);
-}
+export function listQuotations():Quotation[]{return quotationsRepo.getAll().sort((a,b)=>(a.createdAt<b.createdAt?1:-1));}
+export function listQuotationsByVendedor(vendedorId:string):Quotation[]{return listQuotations().filter((q)=>q.datosGenerales.vendedorId===vendedorId);}
+export function getQuotation(id:string):Quotation|undefined{return quotationsRepo.getById(id);}
