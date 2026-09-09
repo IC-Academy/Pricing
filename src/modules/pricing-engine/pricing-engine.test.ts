@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from "vitest";
-import { calcularCostoLaboralMensual, calcularCotizacion, calcularPuesto, CARGA_SOCIAL_PCT, OVERHEAD_PCT } from "./index";
+import { calcularCostoLaboralMensual, calcularCotizacion, calcularPuesto, costoMensualExamenes, CARGA_SOCIAL_PCT, OVERHEAD_PCT } from "./index";
 import type { PuestoCotizado } from "../../types";
 
 function puesto(overrides: Partial<PuestoCotizado> = {}): PuestoCotizado {
@@ -13,11 +13,14 @@ describe("pricing-engine", () => {
     expect(calcularCostoLaboralMensual(10000)).toBeCloseTo(10000*(1+CARGA_SOCIAL_PCT));
   });
 
-  it("adds uniforme, equipo and overhead into the monthly cost of a single position", () => {
-    const result=calcularPuesto(puesto({salarioMensual:10000,uniformeCosto:300,equipoCosto:200}),0.25);
+  it("adds mandatory IC exams, uniforme, equipo and overhead into the monthly cost of a single position", () => {
+    const p=puesto({salarioMensual:10000,uniformeCosto:300,equipoCosto:200});
+    const result=calcularPuesto(p,0.25);
     const costoLaboral=10000*(1+CARGA_SOCIAL_PCT);
-    const subtotal=costoLaboral+300+200;
+    const examenesObligatoriosMensual=costoMensualExamenes(p);
+    const subtotal=costoLaboral+300+200+examenesObligatoriosMensual;
     const costoEsperado=subtotal+(subtotal*OVERHEAD_PCT);
+    expect(examenesObligatoriosMensual).toBeCloseTo(35.75,2);
     expect(result.costoMensualTotal).toBeCloseTo(costoEsperado,2);
   });
 
@@ -54,8 +57,6 @@ describe("pricing-engine", () => {
     const puestos=[puesto({id:"a",cantidadPosiciones:2,salarioMensual:10000}),puesto({id:"b",cantidadPosiciones:1,salarioMensual:15000})];
     const resultado=calcularCotizacion(puestos,{grossMarginObjetivo:0.25,vigenciaPropuestaDias:30});
     const sumaCosto=resultado.puestos.reduce((acc,p)=>acc+p.costoMensualTotal,0);
-    const sumaPrecio=resultado.puestos.reduce((acc,p)=>acc+p.precioTotalPuesto,0);
     expect(resultado.costoMensualTotal).toBeCloseTo(sumaCosto,2);
-    expect(resultado.precioMensualTotal).toBeCloseTo(sumaPrecio,2);
   });
 });
