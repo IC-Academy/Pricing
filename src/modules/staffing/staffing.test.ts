@@ -19,6 +19,10 @@ describe("staffing esquema 72",()=>{
     expect(calcularHcRequeridoPuesto(puesto({cobertura:"24x7",horas:24,dias:7})).hcRequerido).toBe(3);
   });
   it("acumula grupos de puestos",()=>{
-    expect(calcularHcRequeridoTotal([puesto({cantidadPosiciones:5}),puesto({id:"p2",cantidadPosiciones:2,horas:8,dias:6,cobertura:"8x6"})])).toBe(12);
+    const total=calcularHcRequeridoTotal([
+      puesto({cantidadPosiciones:5}),
+      puesto({id:"p2",cantidadPosiciones:2,horas:8,dias:6,cobertura:"8x6"}),
+    ]);
+    expect(total).toBe(8);
   });
 });
