@@ -3,7 +3,7 @@ import { calcularCostoLaboralMensual, calcularCotizacion, calcularPuesto, costoM
 import type { PuestoCotizado } from "../../types";
 
 function puesto(overrides: Partial<PuestoCotizado> = {}): PuestoCotizado {
-  return { id:"p1",tipoPuesto:"Guardia Intramuros",cantidadPosiciones:1,cobertura:"24x7",horas:12,dias:30,salarioMensual:10000,uniformeCosto:0,equipoCosto:0,vehiculoOpcional:false,vehiculoCosto:0,...overrides };
+  return { id:"p1",tipoPuesto:"Guardia Intramuros",cantidadPosiciones:1,cobertura:"12x5",horas:12,dias:5,salarioMensual:10000,uniformeCosto:0,equipoCosto:0,vehiculoOpcional:false,vehiculoCosto:0,...overrides };
 }
 
 describe("pricing-engine", () => {
@@ -13,15 +13,23 @@ describe("pricing-engine", () => {
     expect(calcularCostoLaboralMensual(10000)).toBeCloseTo(10000*(1+CARGA_SOCIAL_PCT));
   });
 
-  it("adds mandatory IC exams, uniforme, equipo and overhead into the monthly cost of a single position", () => {
+  it("adds mandatory IC exams, uniforme, equipo and overhead into a 12x5 position", () => {
     const p=puesto({salarioMensual:10000,uniformeCosto:300,equipoCosto:200});
     const result=calcularPuesto(p,0.25);
     const costoLaboral=10000*(1+CARGA_SOCIAL_PCT);
     const examenesObligatoriosMensual=costoMensualExamenes(p);
     const subtotal=costoLaboral+300+200+examenesObligatoriosMensual;
     const costoEsperado=subtotal+(subtotal*OVERHEAD_PCT);
+    expect(result.hcRequerido).toBe(1);
     expect(examenesObligatoriosMensual).toBeCloseTo(35.75,2);
     expect(result.costoMensualTotal).toBeCloseTo(costoEsperado,2);
+  });
+
+  it("prices 12x7 with two required HC for one physical position", () => {
+    const base=calcularPuesto(puesto({cobertura:"12x7",horas:12,dias:7}),0.25);
+    expect(base.horasSemana).toBe(84);
+    expect(base.hcRequerido).toBe(2);
+    expect(base.costoMensualTotal).toBeGreaterThan(calcularPuesto(puesto(),0.25).costoMensualTotal);
   });
 
   it("ignores vehiculoCosto when vehiculoOpcional is false", () => {
@@ -38,13 +46,13 @@ describe("pricing-engine", () => {
 
   it("computes price as cost / (1 - margen)", () => {
     const margen=0.3; const result=calcularPuesto(puesto({salarioMensual:10000}),margen);
-    expect(result.precioRecomendadoUnitario).toBeCloseTo(result.costoMensualTotal/(1-margen),2);
+    expect(result.precioTotalPuesto).toBeCloseTo(result.costoMensualTotal/(1-margen),2);
   });
 
-  it("multiplies unit price/cost by cantidadPosiciones for the position total", () => {
+  it("keeps unit price consistent for multiple 12x5 positions", () => {
     const result=calcularPuesto(puesto({cantidadPosiciones:5,salarioMensual:10000}),0.25);
+    expect(result.hcRequerido).toBe(5);
     expect(result.precioTotalPuesto).toBeCloseTo(result.precioRecomendadoUnitario*5,2);
-    expect(result.costoMensualTotal).toBeCloseTo((result.costoMensualTotal/5)*5,2);
   });
 
   it("clamps an out-of-range margin instead of dividing by zero or going negative", () => {
@@ -57,6 +65,7 @@ describe("pricing-engine", () => {
     const puestos=[puesto({id:"a",cantidadPosiciones:2,salarioMensual:10000}),puesto({id:"b",cantidadPosiciones:1,salarioMensual:15000})];
     const resultado=calcularCotizacion(puestos,{grossMarginObjetivo:0.25,vigenciaPropuestaDias:30});
     const sumaCosto=resultado.puestos.reduce((acc,p)=>acc+p.costoMensualTotal,0);
+    expect(resultado.hcRequeridoTotal).toBe(3);
     expect(resultado.costoMensualTotal).toBeCloseTo(sumaCosto,2);
   });
 });
