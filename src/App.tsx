@@ -32,6 +32,7 @@ function AppRoutes(){return <Routes>
     <Route path="/cotizaciones/:id" element={<CotizacionDetailPage/>}/>
     <Route path="/propuesta/:id" element={<PropuestaPage/>}/>
     <Route path="/nueva-cotizacion" element={<RequireSection section="nuevaCotizacion"><CalculadoraWizard/></RequireSection>}/>
+    <Route path="/calculadora" element={<Navigate to="/nueva-cotizacion" replace/>}/>
     <Route path="/mis-cotizaciones" element={<RequireSection section="misCotizaciones"><MisCotizacionesPage/></RequireSection>}/>
     <Route path="/validaciones" element={<RequireSection section="validaciones"><ValidacionesPage/></RequireSection>}/>
     <Route path="/usuarios" element={<RequireSection section="usuarios"><UsuariosPage/></RequireSection>}/>
