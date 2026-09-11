@@ -5,16 +5,19 @@
 import { quotationsRepo, catalogItemsRepo, exceptionsRepo } from "../../data/db";
 import { EXAMENES_DEMO, EXAMENES_OBLIGATORIOS_IC } from "../../data/price-model-real";
 import { calcularCotizacion } from "../pricing-engine";
+import { calcularHcRequeridoTotal } from "../staffing";
 import { validarPuestos, crearExcepciones } from "../validation-engine";
 import { recordAuditEntry } from "../audit-service";
 import { newId, nowIso } from "../../lib/ids";
 import type { DatosGenerales, ParametrosComerciales, PuestoCotizado, Quotation, QuotationStatus, ValidationException } from "../../types";
 
+export const DISCLAIMER_COTIZACION_PRELIMINAR = "Cotización preliminar sujeta a revalidación por las áreas correspondientes. Los costos estimados pueden modificarse durante la validación final. Tiempo objetivo de respuesta para cotización final: 2 días hábiles.";
+export const LIMITE_HC_REVISION_OBLIGATORIA = 30;
+
 export function generateFolio(): string {
   const year = new Date().getFullYear();
   const existing = quotationsRepo.getAll().filter((q) => q.folio.startsWith(`PM-${year}-`));
-  const next = existing.length + 1;
-  return `PM-${year}-${String(next).padStart(5, "0")}`;
+  return `PM-${year}-${String(existing.length + 1).padStart(5, "0")}`;
 }
 
 export interface ManualValidationInput { campo:string; valorCapturado:number; comentario?:string; }
@@ -27,16 +30,24 @@ function normalizePuestos(puestos:PuestoCotizado[]):PuestoCotizado[] {
   return puestos.map((p)=>({ ...p, examenes:[...new Set([...(p.examenes ?? []), ...EXAMENES_OBLIGATORIOS_IC])] }));
 }
 
+function withPreliminaryDisclaimer(parametros:ParametrosComerciales):ParametrosComerciales {
+  const observaciones=parametros.observaciones?.trim() ?? "";
+  if(observaciones.includes(DISCLAIMER_COTIZACION_PRELIMINAR)) return parametros;
+  return { ...parametros, observaciones:[observaciones,DISCLAIMER_COTIZACION_PRELIMINAR].filter(Boolean).join("\n\n") };
+}
+
 function validacionesExamenesObligatorios(puestos:PuestoCotizado[]):ManualValidationInput[] {
   return puestos.flatMap((p,idx)=>(p.examenes ?? []).flatMap((id)=>{
     const examen=EXAMENES_DEMO.find((x)=>x.id===id);
     if(!examen?.obligatorioIc || examen.costoReferencia!==null) return [];
-    return [{
-      campo:`Examen obligatorio sin costo — Puesto ${idx+1} — ${examen.nombre}`,
-      valorCapturado:0,
-      comentario:`${examen.nombre} es obligatorio en reclutamiento IC, pero el catálogo fuente no tiene costo. Pricing debe capturar/validar el importe antes de liberar la propuesta final.`,
-    }];
+    return [{ campo:`Examen obligatorio sin costo — Puesto ${idx+1} — ${examen.nombre}`, valorCapturado:0, comentario:`${examen.nombre} es obligatorio en reclutamiento IC, pero el catálogo fuente no tiene costo. Pricing debe capturar/validar el importe antes de liberar la propuesta final.` }];
   }));
+}
+
+function validacionPorTamano(puestos:PuestoCotizado[]):ManualValidationInput[] {
+  const hc=calcularHcRequeridoTotal(puestos);
+  if(hc<=LIMITE_HC_REVISION_OBLIGATORIA) return [];
+  return [{ campo:"Revisión obligatoria por tamaño del servicio", valorCapturado:hc, comentario:`El servicio requiere ${hc} HC según esquema de 72 horas. Toda cotización mayor a ${LIMITE_HC_REVISION_OBLIGATORIA} HC debe ser revisada por Pricing antes de liberar propuesta final.` }];
 }
 
 function takeParametersSnapshot() {
@@ -57,16 +68,17 @@ function crearExcepcionesManuales(hallazgos:ManualValidationInput[], quotationId
 export function createQuotation(input:CreateQuotationInput):Quotation {
   const id=newId(); const folio=generateFolio();
   const puestos=normalizePuestos(input.puestos);
+  const parametrosComerciales=withPreliminaryDisclaimer(input.parametrosComerciales);
   if (input.asDraft) {
-    const draft:Quotation={id,folio,datosGenerales:input.datosGenerales,puestos,parametrosComerciales:input.parametrosComerciales,status:"BORRADOR",createdAt:nowIso(),updatedAt:nowIso(),createdBy:input.createdBy,exceptionIds:[]};
+    const draft:Quotation={id,folio,datosGenerales:input.datosGenerales,puestos,parametrosComerciales,status:"BORRADOR",createdAt:nowIso(),updatedAt:nowIso(),createdBy:input.createdBy,exceptionIds:[]};
     quotationsRepo.create(draft); return draft;
   }
 
-  const resultado=calcularCotizacion(puestos,input.parametrosComerciales,input.datosGenerales);
+  const resultado=calcularCotizacion(puestos,parametrosComerciales,input.datosGenerales);
   const hallazgos=validarPuestos(puestos,input.datosGenerales);
-  const manuales=[...(input.manualValidations ?? []),...validacionesExamenesObligatorios(puestos)];
+  const manuales=[...(input.manualValidations ?? []),...validacionesExamenesObligatorios(puestos),...validacionPorTamano(puestos)];
   const status:QuotationStatus=hallazgos.length>0 || manuales.length>0 ? "PENDIENTE_VALIDACION" : "CALCULADA";
-  const quotation:Quotation={id,folio,datosGenerales:input.datosGenerales,puestos,parametrosComerciales:input.parametrosComerciales,resultado,parametrosSnapshot:{tomadoEl:nowIso(),items:takeParametersSnapshot()},status,createdAt:nowIso(),updatedAt:nowIso(),createdBy:input.createdBy,exceptionIds:[]};
+  const quotation:Quotation={id,folio,datosGenerales:input.datosGenerales,puestos,parametrosComerciales,resultado,parametrosSnapshot:{tomadoEl:nowIso(),items:takeParametersSnapshot()},status,createdAt:nowIso(),updatedAt:nowIso(),createdBy:input.createdBy,exceptionIds:[]};
   quotationsRepo.create(quotation);
 
   const exceptions=[
@@ -84,15 +96,16 @@ export function createQuotation(input:CreateQuotationInput):Quotation {
 export function finalizeDraft(quotationId:string):Quotation|undefined {
   const draft=quotationsRepo.getById(quotationId); if(!draft) return undefined;
   const puestos=normalizePuestos(draft.puestos);
-  const resultado=calcularCotizacion(puestos,draft.parametrosComerciales,draft.datosGenerales);
+  const parametrosComerciales=withPreliminaryDisclaimer(draft.parametrosComerciales);
+  const resultado=calcularCotizacion(puestos,parametrosComerciales,draft.datosGenerales);
   const hallazgos=validarPuestos(puestos,draft.datosGenerales);
-  const manuales=validacionesExamenesObligatorios(puestos);
+  const manuales=[...validacionesExamenesObligatorios(puestos),...validacionPorTamano(puestos)];
   const status:QuotationStatus=hallazgos.length>0 || manuales.length>0?"PENDIENTE_VALIDACION":"CALCULADA";
   const exceptions=[
     ...crearExcepciones(hallazgos,draft.id,draft.folio,draft.datosGenerales.cliente,draft.datosGenerales.vendedorNombre),
     ...crearExcepcionesManuales(manuales,draft.id,draft.folio,draft.datosGenerales.cliente,draft.datosGenerales.vendedorNombre),
   ];
-  const updated:Quotation={...draft,puestos,resultado,parametrosSnapshot:{tomadoEl:nowIso(),items:takeParametersSnapshot()},status,updatedAt:nowIso(),exceptionIds:exceptions.map((e)=>e.id)};
+  const updated:Quotation={...draft,puestos,parametrosComerciales,resultado,parametrosSnapshot:{tomadoEl:nowIso(),items:takeParametersSnapshot()},status,updatedAt:nowIso(),exceptionIds:exceptions.map((e)=>e.id)};
   quotationsRepo.replace(quotationId,updated);
   recordAuditEntry({entidad:"COTIZACION",entidadId:updated.id,descripcion:`Se calculó la cotización ${updated.folio} para ${updated.datosGenerales.cliente}`,usuario:updated.datosGenerales.vendedorNombre});
   return updated;
