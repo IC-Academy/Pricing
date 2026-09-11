@@ -38,13 +38,11 @@ const UNIFORMES_REALES:OpcionCatalogoCotizacion[] = UNIFORMES_KITS_REAL.map((kit
   concepto:`Kit ${kit.grupo}`,
   nombre:kit.nombre,
   costoBase:kit.costoKit,
-  // El Excel entrega costo por kit. Para poder simular la cotización en esta fase
-  // se muestra una amortización de 1 entrega/año, siempre pendiente de validación.
+  // El Excel entrega costo por kit/entrega. El configurador aplica cantidad y entregas por año.
   precioMensual:Math.round((kit.costoKit/12)*100)/100,
-  unidad:"MXN/mes (1 kit/año demo)",
+  unidad:"MXN por kit/entrega",
   fuente:kit.fuente,
-  requiereValidacion:true,
-  nota:`Costo real por kit: $${kit.costoKit.toFixed(2)}. Periodicidad pendiente de validación Pricing.`,
+  nota:`Costo real por kit: $${kit.costoKit.toFixed(2)}. La mensualización se calcula con la cantidad y entregas por año capturadas en la cotización.`,
 }));
 
 export const OPCIONES_CATALOGO_COTIZACION:OpcionCatalogoCotizacion[] = [
@@ -56,7 +54,7 @@ export const OPCIONES_CATALOGO_COTIZACION:OpcionCatalogoCotizacion[] = [
   { id:"eq-proteccion-otro", tipo:"EQUIPO", concepto:"Protección", nombre:"Otro / Especifique", precioMensual:null, unidad:"MXN/mes", fuente:"Pendiente de catálogo Pricing", requiereValidacion:true },
   { id:"eq-otro", tipo:"EQUIPO", concepto:"Otro", nombre:"Otro / Especifique", precioMensual:null, unidad:"MXN/mes", fuente:"Pendiente de catálogo Pricing", requiereValidacion:true },
   ...UNIFORMES_REALES,
-  { id:"un-otro", tipo:"UNIFORME", concepto:"Otro", nombre:"Otro / Especifique", precioMensual:null, unidad:"MXN/mes", fuente:"Pendiente de catálogo Pricing", requiereValidacion:true },
+  { id:"un-otro", tipo:"UNIFORME", concepto:"Otro", nombre:"Otro / Especifique", precioMensual:null, unidad:"MXN por pieza/kit", fuente:"Pendiente de catálogo Pricing", requiereValidacion:true },
   { id:"veh-sedan", tipo:"VEHICULO", concepto:"Vehículo", nombre:"Vehículo Sedán de Ronda", precioMensual:9800, unidad:"MXN/mes", fuente:"Catálogo demo Pricing 2026" },
   { id:"veh-camioneta", tipo:"VEHICULO", concepto:"Vehículo", nombre:"Camioneta de Supervisión", precioMensual:14500, unidad:"MXN/mes", fuente:"Catálogo demo Pricing 2026" },
   { id:"veh-otro", tipo:"VEHICULO", concepto:"Vehículo", nombre:"Otro / Especifique", precioMensual:null, unidad:"MXN/mes", fuente:"Pendiente de catálogo Pricing", requiereValidacion:true },
