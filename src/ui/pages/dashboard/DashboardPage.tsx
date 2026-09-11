@@ -48,7 +48,7 @@ export function DashboardPage(){
           <h2 className="max-w-2xl text-2xl font-semibold tracking-[-.04em] md:text-[32px]">Bienvenido, {firstName}.<br/><span className="text-white/68">Cotiza con datos, precisión y contexto operativo.</span></h2>
           <p className="mt-4 max-w-xl text-sm leading-6 text-white/55">Price Model convierte benchmark, estructura operativa, Gross Comp y catálogos vigentes en decisiones comerciales más rápidas y trazables.</p>
           <div className="mt-6 flex flex-wrap gap-3">
-            <Link to="/calculadora" className="inline-flex items-center gap-2 rounded-xl bg-accent-500 px-4 py-2.5 text-sm font-semibold text-brand-800 shadow-[0_10px_26px_rgba(254,197,42,.22)] transition hover:-translate-y-0.5 hover:bg-accent-400"><span className="text-lg leading-none">＋</span>Nueva cotización</Link>
+            <Link to="/nueva-cotizacion" className="inline-flex items-center gap-2 rounded-xl bg-accent-500 px-4 py-2.5 text-sm font-semibold text-brand-800 shadow-[0_10px_26px_rgba(254,197,42,.22)] transition hover:-translate-y-0.5 hover:bg-accent-400"><span className="text-lg leading-none">＋</span>Nueva cotización</Link>
             <Link to="/cotizaciones" className="inline-flex items-center rounded-xl border border-white/15 bg-white/8 px-4 py-2.5 text-sm font-semibold text-white/85 backdrop-blur-sm transition hover:bg-white/13">Ver cotizaciones</Link>
           </div>
         </div>
@@ -76,7 +76,7 @@ export function DashboardPage(){
         <Card>
           <CardHeader title="Acciones rápidas" subtitle="Atajos para la operación diaria."/>
           <div className="grid gap-2.5 p-4">
-            <QuickAction to="/calculadora" icon="＋" title="Nueva cotización" text="Crea una propuesta desde cero" primary/>
+            <QuickAction to="/nueva-cotizacion" icon="＋" title="Nueva cotización" text="Crea una propuesta desde cero" primary/>
             <QuickAction to="/validaciones" icon="✓" title="Centro de validaciones" text={`${pendingExceptions} pendiente${pendingExceptions===1?"":"s"}`}/>
             <QuickAction to="/benchmark" icon="↗" title="Benchmark salarial" text="Compara mercado y rotación"/>
             <QuickAction to="/catalogos" icon="▦" title="Catálogos" text="Precios, vigencias y parámetros"/>
