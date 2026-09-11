@@ -55,6 +55,14 @@ describe("pricing-engine", () => {
     expect(result.precioTotalPuesto).toBeCloseTo(result.precioRecomendadoUnitario*5,2);
   });
 
+  it("does not multiply group catalog totals again by position count", () => {
+    const sinBienes=calcularPuesto(puesto({cantidadPosiciones:5}),0.25);
+    const conBienes=calcularPuesto(puesto({cantidadPosiciones:5,equipoCosto:1260,uniformeCosto:500}),0.25);
+    // La diferencia antes de overhead debe ser exactamente el total capturado del grupo: 1,760.
+    // Con overhead 8%, el incremento esperado es 1,900.80, no 5 veces ese importe.
+    expect(conBienes.costoMensualTotal-sinBienes.costoMensualTotal).toBeCloseTo(1760*(1+OVERHEAD_PCT),2);
+  });
+
   it("clamps an out-of-range margin instead of dividing by zero or going negative", () => {
     const result=calcularPuesto(puesto({salarioMensual:10000}),1.5);
     expect(Number.isFinite(result.precioRecomendadoUnitario)).toBe(true);
