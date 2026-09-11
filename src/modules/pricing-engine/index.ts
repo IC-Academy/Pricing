@@ -1,11 +1,12 @@
 // ============================================================================
-// pricing-engine — V0.7
-// Integra catálogos reales de exámenes y parámetros administrados por Pricing.
+// pricing-engine — V0.8
+// Gross Comp + exámenes reales + dimensionamiento operativo por esquema 72 h.
 // ============================================================================
 
 import type { DatosGenerales, DesgloseCostoLaboral, ParametrosComerciales, PuestoCalculado, PuestoCotizado, ResultadoCalculo, TipoExamen } from "../../types";
 import { EXAMENES_DEMO, EXAMENES_OBLIGATORIOS_IC, ISN_2026, PARAMETROS_LABORALES_2026 } from "../../data/price-model-real";
 import { DEFAULT_FINANCIAL_MODEL_PARAMS, loadFinancialModelParams, type FinancialModelParams } from "../financial-model";
+import { calcularHcRequeridoPuesto, calcularHcRequeridoTotal } from "../staffing";
 
 export const CARGA_SOCIAL_PCT = 0.42;
 export const OVERHEAD_PCT = 0.08;
@@ -15,11 +16,9 @@ function clampMargen(margen:number):number {
   if (Number.isNaN(margen)) return 0.2;
   return Math.min(Math.max(margen,0),0.85);
 }
-
 function modelParams():FinancialModelParams {
   try { return loadFinancialModelParams(); } catch { return { ...DEFAULT_FINANCIAL_MODEL_PARAMS }; }
 }
-
 function examenesEfectivos(puesto:PuestoCotizado):TipoExamen[] {
   return [...new Set([...(puesto.examenes ?? []), ...EXAMENES_OBLIGATORIOS_IC])];
 }
@@ -32,8 +31,6 @@ export function costoConocidoExamenesPorAlta(puesto:PuestoCotizado):number {
 }
 
 export function costoMensualExamenes(puesto:PuestoCotizado):number {
-  // Los importes del catálogo son costo por alta. La demo los amortiza 12 meses;
-  // cualquier costo manual adicional sigue en costoExamenesMensualizado.
   const conocidoMensual=round2(costoConocidoExamenesPorAlta(puesto)/12);
   return round2(conocidoMensual + Math.max(0,puesto.costoExamenesMensualizado ?? 0));
 }
@@ -49,7 +46,6 @@ export function calcularDesgloseLaboral(salarioMensual:number, datosGenerales?:D
   const componentesConocidos = aguinaldoMensualizado + vacacionesMensualizadas + primaVacacionalMensualizada + isn + riesgoTrabajo;
   const cargaSocialReferencia = round2(Math.max(0, cargaObjetivo - componentesConocidos));
   const costoLaboralTotal = round2(salarioMensual + cargaObjetivo);
-
   return { sueldoBaseMensual:salarioMensual, aguinaldoMensualizado, vacacionesMensualizadas, primaVacacionalMensualizada, cargaSocialReferencia, isn, riesgoTrabajo, costoLaboralTotal };
 }
 
@@ -58,46 +54,66 @@ export function calcularCostoLaboralMensual(salarioMensual:number):number {
 }
 
 export function calcularPuesto(puesto:PuestoCotizado, margenObjetivo:number, datosGenerales?:DatosGenerales, params:FinancialModelParams = modelParams()):PuestoCalculado {
+  const dimension=calcularHcRequeridoPuesto(puesto);
   const desgloseLaboral = calcularDesgloseLaboral(puesto.salarioMensual, datosGenerales, params);
   const costoLaboralMensual = desgloseLaboral.costoLaboralTotal;
   const examenesMensual=costoMensualExamenes(puesto);
-  const bienesMensual = puesto.uniformeCosto + puesto.equipoCosto + (puesto.vehiculoOpcional ? puesto.vehiculoCosto : 0) + examenesMensual;
-  const subtotal = costoLaboralMensual + bienesMensual;
-  const overhead = round2(subtotal * Math.max(0,params.overheadPct));
-  const costoMensualPorPosicion = round2(subtotal + overhead);
-  const costoMensualTotal = round2(costoMensualPorPosicion * puesto.cantidadPosiciones);
-  const costoAnualTotal = round2(costoMensualTotal * 12);
-  const margenSeguro = clampMargen(margenObjetivo);
-  const precioRecomendadoUnitario = round2(costoMensualPorPosicion / (1 - margenSeguro));
-  const precioTotalPuesto = round2(precioRecomendadoUnitario * puesto.cantidadPosiciones);
-  const precioAnualPuesto = round2(precioTotalPuesto * 12);
-  return { ...puesto, examenes:examenesEfectivos(puesto), costoExamenesMensualizado:examenesMensual, costoLaboralMensual, desgloseLaboral, costoMensualTotal, costoAnualTotal, precioRecomendadoUnitario, precioTotalPuesto, precioAnualPuesto };
+
+  // Mano de obra y exámenes de ingreso se costean por HC realmente requerido.
+  const laboralGrupo=round2(costoLaboralMensual*dimension.hcRequerido);
+  const examenesGrupo=round2(examenesMensual*dimension.hcRequerido);
+  // Uniformes/equipo siguen por posición física hasta cerrar la regla de reposición/asignación con Pricing.
+  const bienesPorPosicion=puesto.uniformeCosto+puesto.equipoCosto+(puesto.vehiculoOpcional?puesto.vehiculoCosto:0);
+  const bienesGrupo=round2(bienesPorPosicion*puesto.cantidadPosiciones);
+  const subtotalGrupo=round2(laboralGrupo+examenesGrupo+bienesGrupo);
+  const overhead=round2(subtotalGrupo*Math.max(0,params.overheadPct));
+  const costoMensualTotal=round2(subtotalGrupo+overhead);
+  const costoAnualTotal=round2(costoMensualTotal*12);
+  const margenSeguro=clampMargen(margenObjetivo);
+  const precioTotalPuesto=round2(costoMensualTotal/(1-margenSeguro));
+  const precioRecomendadoUnitario=round2(precioTotalPuesto/Math.max(1,puesto.cantidadPosiciones));
+  const precioAnualPuesto=round2(precioTotalPuesto*12);
+
+  return {
+    ...puesto,
+    examenes:examenesEfectivos(puesto),
+    costoExamenesMensualizado:examenesMensual,
+    horasSemana:dimension.horasSemana,
+    hcRequerido:dimension.hcRequerido,
+    costoLaboralMensual,
+    desgloseLaboral,
+    costoMensualTotal,
+    costoAnualTotal,
+    precioRecomendadoUnitario,
+    precioTotalPuesto,
+    precioAnualPuesto,
+  };
 }
 
 export function calcularCotizacion(puestos:PuestoCotizado[], parametrosComerciales:ParametrosComerciales, datosGenerales?:DatosGenerales):ResultadoCalculo {
-  const params = modelParams();
-  const puestosCalculados = puestos.map((p) => calcularPuesto(p, parametrosComerciales.grossMarginObjetivo, datosGenerales, params));
-  const baseMensual = round2(puestosCalculados.reduce((acc,p) => acc + p.costoMensualTotal,0));
-  const indirectos = round2(baseMensual * Math.max(0,params.indirectPct));
-  const ga = round2(baseMensual * Math.max(0,params.gaPct));
-  const preFin = baseMensual + indirectos + ga;
-  const financiamiento = round2(preFin * Math.max(0,params.financingPct));
-  const costoMensualTotal = round2(preFin + financiamiento);
-  const costoAnualTotal = round2(costoMensualTotal * 12);
-
-  const margen = clampMargen(parametrosComerciales.grossMarginObjetivo);
-  const precioMensualTotal = round2(costoMensualTotal / (1 - margen));
-  const precioAnualTotal = round2(precioMensualTotal * 12);
-  const fx = parametrosComerciales.tipoCambioUsdMxn && parametrosComerciales.tipoCambioUsdMxn > 0 ? parametrosComerciales.tipoCambioUsdMxn : params.fxUsdMxn > 0 ? params.fxUsdMxn : undefined;
+  const params=modelParams();
+  const puestosCalculados=puestos.map((p)=>calcularPuesto(p,parametrosComerciales.grossMarginObjetivo,datosGenerales,params));
+  const baseMensual=round2(puestosCalculados.reduce((acc,p)=>acc+p.costoMensualTotal,0));
+  const indirectos=round2(baseMensual*Math.max(0,params.indirectPct));
+  const ga=round2(baseMensual*Math.max(0,params.gaPct));
+  const preFin=baseMensual+indirectos+ga;
+  const financiamiento=round2(preFin*Math.max(0,params.financingPct));
+  const costoMensualTotal=round2(preFin+financiamiento);
+  const costoAnualTotal=round2(costoMensualTotal*12);
+  const margen=clampMargen(parametrosComerciales.grossMarginObjetivo);
+  const precioMensualTotal=round2(costoMensualTotal/(1-margen));
+  const precioAnualTotal=round2(precioMensualTotal*12);
+  const fx=parametrosComerciales.tipoCambioUsdMxn&&parametrosComerciales.tipoCambioUsdMxn>0?parametrosComerciales.tipoCambioUsdMxn:params.fxUsdMxn>0?params.fxUsdMxn:undefined;
 
   return {
     puestos:puestosCalculados,
+    hcRequeridoTotal:calcularHcRequeridoTotal(puestos),
     costoMensualTotal,
     costoAnualTotal,
     precioMensualTotal,
     precioAnualTotal,
-    precioMensualUsd:fx ? round2(precioMensualTotal / fx) : undefined,
-    precioAnualUsd:fx ? round2(precioAnualTotal / fx) : undefined,
+    precioMensualUsd:fx?round2(precioMensualTotal/fx):undefined,
+    precioAnualUsd:fx?round2(precioAnualTotal/fx):undefined,
     margenAplicado:margen,
   };
 }
