@@ -1,6 +1,6 @@
 // ============================================================================
-// pricing-engine — V0.8
-// Gross Comp + exámenes reales + dimensionamiento operativo por esquema 72 h.
+// pricing-engine — V0.9
+// Gross Comp + exámenes reales + esquema 72 h + bienes por cantidad de servicio.
 // ============================================================================
 
 import type { DatosGenerales, DesgloseCostoLaboral, ParametrosComerciales, PuestoCalculado, PuestoCotizado, ResultadoCalculo, TipoExamen } from "../../types";
@@ -62,9 +62,14 @@ export function calcularPuesto(puesto:PuestoCotizado, margenObjetivo:number, dat
   // Mano de obra y exámenes de ingreso se costean por HC realmente requerido.
   const laboralGrupo=round2(costoLaboralMensual*dimension.hcRequerido);
   const examenesGrupo=round2(examenesMensual*dimension.hcRequerido);
-  // Uniformes/equipo siguen por posición física hasta cerrar la regla de reposición/asignación con Pricing.
-  const bienesPorPosicion=puesto.uniformeCosto+puesto.equipoCosto+(puesto.vehiculoOpcional?puesto.vehiculoCosto:0);
-  const bienesGrupo=round2(bienesPorPosicion*puesto.cantidadPosiciones);
+
+  // Desde V0.9 uniforme/equipo/vehículo representan el TOTAL MENSUAL DEL GRUPO.
+  // El configurador ya aplica cantidad y periodicidad; no se multiplican de nuevo por posiciones ni HC.
+  const uniformesGrupo=round2(Math.max(0,puesto.uniformeCosto));
+  const equipoGrupo=round2(Math.max(0,puesto.equipoCosto));
+  const vehiculosGrupo=round2(puesto.vehiculoOpcional?Math.max(0,puesto.vehiculoCosto):0);
+  const bienesGrupo=round2(uniformesGrupo+equipoGrupo+vehiculosGrupo);
+
   const subtotalGrupo=round2(laboralGrupo+examenesGrupo+bienesGrupo);
   const overhead=round2(subtotalGrupo*Math.max(0,params.overheadPct));
   const costoMensualTotal=round2(subtotalGrupo+overhead);
