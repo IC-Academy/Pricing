@@ -1,0 +1,13 @@
+{
+  "name": "Price Model 365 · Inter-Con",
+  "short_name": "Price Model",
+  "description": "Motor de pricing y cotización de servicios",
+  "start_url": "/Pricing/#/",
+  "scope": "/Pricing/",
+  "display": "standalone",
+  "background_color": "#f7f9fc",
+  "theme_color": "#002a5c",
+  "icons": [
+    {"src":"/Pricing/price-model-mark.svg","sizes":"any","type":"image/svg+xml","purpose":"any maskable"}
+  ]
+}
