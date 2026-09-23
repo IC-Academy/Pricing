@@ -32,7 +32,7 @@ export const ESTADO_POR_CIUDAD: Record<CiudadDemo,string> = { CDMX:"Ciudad de MÃ
 
 export type PerfilPuesto = "Guardia Intramuros" | "Guardia Armado" | "Supervisor";
 export type NivelPerfil = "A" | "AA" | "ELITE";
-export type TipoExamen = "MEDICO" | "ANTIDOPING" | "POLIGRAFO" | "SOCIOECONOMICO" | "AUDIOMETRIA_OPTOMETRIA" | "PSICOMETRIA";
+export type TipoExamen = "MEDICO" | "ANTIDOPING" | "POLIGRAFO" | "SOCIOECONOMICO" | "AUDIOMETRIA_OPTOMETRIA" | "PSICOMETRIA" | "OTRO";
 export type MonedaCotizacion = "MXN" | "USD";
 
 export interface SeleccionCatalogoCotizacion { id:string; familia:"UNIFORME"|"EQUIPO"|"VEHICULO"; concepto:string; opcion:string; costoMensual:number; esOtro?:boolean; descripcionOtro?:string; }
@@ -40,7 +40,7 @@ export interface SeleccionCatalogoCotizacion { id:string; familia:"UNIFORME"|"EQ
 export interface PuestoCotizado {
   id:string; tipoPuesto:PerfilPuesto; nivelPerfil?:NivelPerfil; cantidadPosiciones:number;
   cobertura:"24x7"|"12x7"|"12x5"|"8x6"|"Diurna"|"Nocturna";
-  horas:number; dias:number; salarioMensual:number; uniformeCosto:number; equipoCosto:number;
+  horas:number; dias:number; esquemaHoras?:number; contingenciaPct?:number; salarioMensual:number; uniformeCosto:number; equipoCosto:number;
   vehiculoOpcional:boolean; vehiculoCosto:number; examenes?:TipoExamen[]; costoExamenesMensualizado?:number;
   seleccionesCatalogo?:SeleccionCatalogoCotizacion[];
 }
