@@ -127,14 +127,14 @@ export function CalculadoraWizard() {
     const current=p.examenes ?? [];
     updatePuesto(id,{examenes:current.includes(examen)?current.filter((x)=>x!==examen):[...current,examen]});
   }
-  function canAdvance(){if(step===0)return !!datosGenerales.cliente.trim()&&!!datosGenerales.nombreOportunidad.trim();if(step===1)return puestos.every((p)=>p.cantidadPosiciones>0&&p.salarioMensual>0);return true;}
+  function canAdvance(){if(step===0)return !!datosGenerales.cliente.trim()&&!!datosGenerales.nombreOportunidad.trim();if(step===1)return puestos.every((p)=>{const dim=calcularHcRequeridoPuesto(p);const uniformes=(costosPorPuesto[p.id]??VACIO).uniformes.reduce((a,x)=>a+x.cantidad,0);const otroOk=!(p.examenes??[]).includes("OTRO")||(!!p.otroExamenDescripcion?.trim()&&(p.otroExamenCostoPorAlta??0)>0);return p.cantidadPosiciones>0&&p.salarioMensual>0&&(p.esquemaHoras??0)>0&&uniformes<=dim.hcTotal&&otroOk;});return true;}
 
   function resumenCatalogos(){
     const lines:string[]=[];
     puestos.forEach((p,idx)=>{
       const c=costosPorPuesto[p.id]??VACIO;
       lines.push(`Puesto ${idx+1}: ${p.tipoPuesto} Perfil ${p.nivelPerfil ?? "A"} · Exámenes ${(p.examenes??[]).join(", ")||"sin selección"}`);
-      [...c.uniformes,...c.equipos,...c.vehiculos].forEach((x)=>lines.push(`  ${x.concepto} - ${x.nombre} (${money(x.precioMensual)}/mes${x.requiereValidacion?", pendiente Pricing":""})`));
+      [...c.uniformes,...c.equipos,...c.vehiculos].forEach((x)=>lines.push(`  ${x.concepto} - ${x.nombre} · ${x.cantidad} unidad(es)${x.entregasAnio?` · ${x.entregasAnio} entrega(s)/año`:""}${x.aplicacion?` · aplicación ${x.aplicacion}`:""} (${money(x.precioMensual)}/mes${x.requiereValidacion?", pendiente Pricing":""})`));
     });
     return lines.join("\n");
   }
