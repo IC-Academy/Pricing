@@ -116,6 +116,8 @@ export function calcularCotizacion(puestos:PuestoCotizado[], parametrosComercial
 
   return {
     puestos:puestosCalculados,
+    hcBaseTotal:puestosCalculados.reduce((a,p)=>a+(p.hcBase??p.hcRequerido??p.cantidadPosiciones),0),
+    hcContingenciaTotal:puestosCalculados.reduce((a,p)=>a+(p.hcContingencia??0),0),
     hcRequeridoTotal:calcularHcRequeridoTotal(puestos),
     costoMensualTotal,
     costoAnualTotal,
