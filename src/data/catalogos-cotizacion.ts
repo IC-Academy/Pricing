@@ -28,8 +28,6 @@ export const TURNOS_DEMO = [
   { id:"12x5", nombre:"12x5", label:"12x5", horas:12, diasSemana:5 },
   { id:"8x6", nombre:"8x6", label:"8x6", horas:8, diasSemana:6 },
   { id:"24x7", nombre:"24x7", label:"24x7", horas:24, diasSemana:7 },
-  { id:"Diurna", nombre:"Diurna", label:"Diurna", horas:12, diasSemana:7 },
-  { id:"Nocturna", nombre:"Nocturna", label:"Nocturna", horas:12, diasSemana:7 },
 ] as const;
 
 const UNIFORMES_REALES:OpcionCatalogoCotizacion[] = UNIFORMES_KITS_REAL.map((kit)=>({
