@@ -42,6 +42,7 @@ export interface PuestoCotizado {
   cobertura:"24x7"|"12x7"|"12x5"|"8x6"|"Diurna"|"Nocturna";
   horas:number; dias:number; esquemaHoras?:number; contingenciaPct?:number; salarioMensual:number; uniformeCosto:number; equipoCosto:number;
   vehiculoOpcional:boolean; vehiculoCosto:number; examenes?:TipoExamen[]; costoExamenesMensualizado?:number;
+  otroExamenDescripcion?:string; otroExamenCostoPorAlta?:number;
   seleccionesCatalogo?:SeleccionCatalogoCotizacion[];
 }
 
