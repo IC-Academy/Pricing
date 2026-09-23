@@ -58,6 +58,7 @@ export const EXAMENES_DEMO:ExamenCatalogoDemo[] = [
   { id:"SOCIOECONOMICO", nombre:"Socioeconómico", categoria:"CONFIANZA", obligatorioIc:false, costoReferencia:900, requiereValidacion:false, fuente:"EXAMENES, CAPACITACION E INDUCCION / EXAMENES" },
   { id:"AUDIOMETRIA_OPTOMETRIA", nombre:"Audiometría / Optometría", categoria:"EXAMEN", obligatorioIc:false, costoReferencia:null, requiereValidacion:true, fuente:"EXAMENES, CAPACITACION E INDUCCION / EXAMENES" },
   { id:"PSICOMETRIA", nombre:"Psicometría", categoria:"EXAMEN", obligatorioIc:true, costoReferencia:null, requiereValidacion:true, fuente:"EXAMENES, CAPACITACION E INDUCCION / EXAMENES" },
+  { id:"OTRO", nombre:"Otro / Especifique", categoria:"EXAMEN", obligatorioIc:false, costoReferencia:null, requiereValidacion:true, fuente:"Requerimiento funcional Pricing · costo por validar" },
 ];
 
 export const EXAMENES_OBLIGATORIOS_IC:TipoExamen[] = EXAMENES_DEMO.filter((x)=>x.obligatorioIc).map((x)=>x.id);
