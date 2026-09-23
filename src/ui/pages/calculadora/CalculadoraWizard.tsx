@@ -143,7 +143,7 @@ export function CalculadoraWizard() {
       const c=costosPorPuesto[p.id]??VACIO;
       return [...c.uniformes,...c.equipos,...c.vehiculos].filter((x)=>x.requiereValidacion).map((x)=>({campo:`${x.tipo} especial — Puesto ${idx+1} — ${x.concepto}: ${x.nombre}`,valorCapturado:x.precioMensual,comentario:`Concepto fuera de catálogo. Precio estimado ${money(x.precioMensual)}. Requiere validación de Pricing.`}));
     });
-    const examenes=puestos.flatMap((p,idx)=>(p.examenes??[]).filter((e)=>EXAMENES_DEMO.find((x)=>x.id===e)?.requiereValidacion).map((e)=>({campo:`Examen especializado — Puesto ${idx+1} — ${EXAMENES_DEMO.find((x)=>x.id===e)?.nombre ?? e}`,valorCapturado:p.costoExamenesMensualizado ?? 0,comentario:"Examen especializado: validar costo unitario, periodicidad y mensualización con Pricing."})));
+    const examenes=puestos.flatMap((p,idx)=>(p.examenes??[]).filter((e)=>EXAMENES_DEMO.find((x)=>x.id===e)?.requiereValidacion).map((e)=>({campo:e==="OTRO"?`Otro examen — Puesto ${idx+1} — ${p.otroExamenDescripcion?.trim()||"Sin especificar"}`:`Examen especializado — Puesto ${idx+1} — ${EXAMENES_DEMO.find((x)=>x.id===e)?.nombre ?? e}`,valorCapturado:e==="OTRO"?(p.otroExamenCostoPorAlta??0):(p.costoExamenesMensualizado??0),comentario:e==="OTRO"?"Examen fuera de catálogo: validar descripción y costo por alta con Pricing.":"Examen especializado: validar costo unitario, periodicidad y mensualización con Pricing."})));
     return [...catalogos,...examenes];
   }
   function parametrosConResumen():ParametrosComerciales{return {...parametros,opcionales:[parametros.opcionales,resumenCatalogos()].filter(Boolean).join("\n\n")};}
