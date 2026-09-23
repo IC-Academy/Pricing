@@ -73,6 +73,8 @@ export interface PuestoCalculado extends PuestoCotizado {
 
 export interface ResultadoCalculo {
   puestos:PuestoCalculado[];
+  hcBaseTotal?:number;
+  hcContingenciaTotal?:number;
   hcRequeridoTotal?:number;
   costoMensualTotal:number; costoAnualTotal?:number;
   precioMensualTotal:number; precioAnualTotal?:number; precioMensualUsd?:number; precioAnualUsd?:number; margenAplicado:number;
