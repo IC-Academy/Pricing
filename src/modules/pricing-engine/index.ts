@@ -1,6 +1,6 @@
 // ============================================================================
-// pricing-engine — V0.9
-// Gross Comp + exámenes reales + esquema 72 h + bienes por cantidad de servicio.
+// pricing-engine — V1.0
+// Gross Comp + exámenes reales + esquema laboral flexible + contingencia + bienes por cantidad de servicio.
 // ============================================================================
 
 import type { DatosGenerales, DesgloseCostoLaboral, ParametrosComerciales, PuestoCalculado, PuestoCotizado, ResultadoCalculo, TipoExamen } from "../../types";
@@ -84,7 +84,10 @@ export function calcularPuesto(puesto:PuestoCotizado, margenObjetivo:number, dat
     examenes:examenesEfectivos(puesto),
     costoExamenesMensualizado:examenesMensual,
     horasSemana:dimension.horasSemana,
-    hcRequerido:dimension.hcRequerido,
+    hcBase:dimension.hcBase,
+    hcContingencia:dimension.hcContingencia,
+    hcTotal:dimension.hcTotal,
+    hcRequerido:dimension.hcTotal,
     costoLaboralMensual,
     desgloseLaboral,
     costoMensualTotal,
