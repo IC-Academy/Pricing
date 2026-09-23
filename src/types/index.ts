@@ -61,6 +61,9 @@ export interface DesgloseCostoLaboral {
 
 export interface PuestoCalculado extends PuestoCotizado {
   horasSemana?:number;
+  hcBase?:number;
+  hcContingencia?:number;
+  hcTotal?:number;
   hcRequerido?:number;
   costoLaboralMensual:number;
   desgloseLaboral?:DesgloseCostoLaboral;
