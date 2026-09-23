@@ -25,6 +25,7 @@ function examenesEfectivos(puesto:PuestoCotizado):TipoExamen[] {
 
 export function costoConocidoExamenesPorAlta(puesto:PuestoCotizado):number {
   return round2(examenesEfectivos(puesto).reduce((total,id)=>{
+    if(id==="OTRO") return total + Math.max(0,puesto.otroExamenCostoPorAlta ?? 0);
     const costo=EXAMENES_DEMO.find((x)=>x.id===id)?.costoReferencia;
     return total + (costo ?? 0);
   },0));
